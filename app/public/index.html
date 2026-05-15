@@ -951,6 +951,10 @@ function checkIsPlaylist(url) {
   return url.toLowerCase().includes('list=');
 }
 
+function stripPlaylistParams(url) {
+  return url.replace(/[?&](?:list|index|si)=[^&]+/g, '').replace(/[?&]$/, '');
+}
+
 /* ── Main Tab Switching ── */
 document.querySelectorAll('.main-tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -1055,8 +1059,9 @@ $('wizFormatOutput').addEventListener('click', (e) => {
 });
 
 async function fetchAudioBitratesFromJson() {
-  const url = state.wizUrl;
+  let url = state.wizUrl;
   if (!url) return;
+  if (!state.playlistMode) url = stripPlaylistParams(url);
   try {
     const res = await api('/api/info', { method: 'POST', body: JSON.stringify({ url }) });
     if (!res || !res.formats) return;
@@ -1205,7 +1210,7 @@ async function cancelDownload() {
 }
 
 async function wizStartDownload() {
-  const url = state.wizUrl;
+  let url = state.wizUrl;
   let formatCode = $('wizFormatCode').value.trim();
   if (!formatCode) formatCode = 'best';
   state.wizFormatCode = formatCode;
@@ -1214,6 +1219,7 @@ async function wizStartDownload() {
 
   const isAudio = state.wizType === 'audio';
   const isPlaylist = checkIsPlaylist(url);
+  if (!isPlaylist) url = stripPlaylistParams(url);
   const payload = { url, mode: state.wizType };
 
   if (isAudio) {
@@ -1440,6 +1446,7 @@ async function startPopularDownload(url, format) {
   state.downloading = true;
   const isAudio = format === 'mp3';
   const isPlaylist = checkIsPlaylist(url);
+  if (!isPlaylist) url = stripPlaylistParams(url);
 
   const ov = $('popularProgress');
   ov.classList.add('visible');
