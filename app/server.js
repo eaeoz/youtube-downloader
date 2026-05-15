@@ -20,6 +20,7 @@ const DEFAULT_DOWNLOADS_DIR = path.join(__dirname, '..', 'downloads');
 if (!fs.existsSync(DEFAULT_DOWNLOADS_DIR)) fs.mkdirSync(DEFAULT_DOWNLOADS_DIR, { recursive: true });
 
 const downloadEmitters = {};
+const downloadProcs = {};
 let downloadIdCounter = 0;
 
 app.use(cors());
@@ -92,9 +93,10 @@ function isPlaylist(url) {
   return u.includes('list=') || u.includes('/playlist?') || u.includes('/playlists?');
 }
 
-function execSpawn(command, args, eventEmitter, stage) {
+function execSpawn(command, args, eventEmitter, stage, trackId) {
   return new Promise((resolve, reject) => {
     const proc = spawn(command, args, { stdio: ['pipe', 'pipe', 'pipe'] });
+    if (trackId) downloadProcs[trackId] = proc;
     let stderr = '';
     let stdout = '';
 
@@ -128,8 +130,10 @@ function execSpawn(command, args, eventEmitter, stage) {
       }
     });
 
-    proc.on('close', (code) => {
-      if (code === 0) resolve({ stdout, stderr });
+    proc.on('close', (code, signal) => {
+      if (trackId) delete downloadProcs[trackId];
+      if (signal === 'SIGTERM') return resolve({ stdout, stderr, cancelled: true });
+      if (code === 0) return resolve({ stdout, stderr });
       else {
         const allLines = stderr.split('\n').filter(l => l.trim());
         const cleanLines = allLines.filter(l => !(l.includes('[download]') && l.includes('%'))).slice(-30);
@@ -137,7 +141,10 @@ function execSpawn(command, args, eventEmitter, stage) {
         reject(new Error(cleanErr || `Exit code ${code}`));
       }
     });
-    proc.on('error', reject);
+    proc.on('error', (err) => {
+      if (trackId) delete downloadProcs[trackId];
+      reject(err);
+    });
   });
 }
 
@@ -316,7 +323,13 @@ app.post('/api/download', async (req, res) => {
         emitter.emit('progress', { stage: 'start', message: 'Processing playlist items...' });
       }
 
-      const result = await execSpawn(ytPath, baseArgs, emitter, 'download');
+      const result = await execSpawn(ytPath, baseArgs, emitter, 'download', id);
+
+      if (result && result.cancelled) {
+        emitter.emit('progress', { stage: 'cancelled', message: 'Download cancelled' });
+        setTimeout(() => delete downloadEmitters[id], 2000);
+        return;
+      }
 
       const stdoutLines = (result.stdout || '').split('\n').map(l => l.trim()).filter(Boolean);
       let finalPath = stdoutLines.filter(l => fs.existsSync(l))[0] || '';
@@ -500,8 +513,7 @@ app.get('/api/download/progress/:id', (req, res) => {
   emitter.on('progress', onProgress);
 
   const checkDone = (data) => {
-    if (data.stage === 'done' || data.stage === 'error' || data.stage === 'formats_done') {
-      const wasLast = data.stage === 'formats_done' ? true : true;
+    if (['done', 'error', 'formats_done', 'cancelled'].includes(data.stage)) {
       setTimeout(() => {
         emitter.removeListener('progress', onProgress);
         res.end();
@@ -515,6 +527,38 @@ app.get('/api/download/progress/:id', (req, res) => {
     emitter.removeListener('progress', onProgress);
     emitter.removeListener('progress', checkDone);
   });
+});
+
+app.post('/api/cancel/:id', (req, res) => {
+  const { id } = req.params;
+  const proc = downloadProcs[id];
+  if (proc) {
+    try { proc.kill('SIGTERM'); } catch (_) {}
+    delete downloadProcs[id];
+  }
+  delete downloadEmitters[id];
+  const dlDir = getDownloadsDir();
+  try {
+    const entries = fs.readdirSync(dlDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name.includes(id)) {
+        const fullPath = path.join(dlDir, entry.name);
+        if (entry.isDirectory()) fs.rmSync(fullPath, { recursive: true, force: true });
+        else fs.unlinkSync(fullPath);
+      }
+    }
+    const subdirs = entries.filter(e => e.isDirectory());
+    for (const sub of subdirs) {
+      const subPath = path.join(dlDir, sub.name);
+      try {
+        const subFiles = fs.readdirSync(subPath);
+        for (const f of subFiles) {
+          if (f.includes(id)) fs.unlinkSync(path.join(subPath, f));
+        }
+      } catch (_) {}
+    }
+  } catch (_) {}
+  res.json({ ok: true, message: 'Cancelled' });
 });
 
 app.post('/api/update-ytdlp', (req, res) => {

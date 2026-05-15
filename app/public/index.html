@@ -331,6 +331,15 @@ body{
 }
 .wizard-btn-secondary:hover{background:var(--border);color:var(--text)}
 .wizard-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.cancel-btn{
+  padding:8px 18px;border-radius:var(--radius-sm);
+  border:1px solid var(--red);background:transparent;
+  color:var(--red);font-size:13px;font-weight:500;
+  cursor:pointer;transition:all var(--transition);
+  display:flex;align-items:center;gap:6px;
+  font-family:inherit;margin-top:4px;
+}
+.cancel-btn:hover{background:var(--red);color:#fff;transform:scale(1.03)}
 
 /* Format output */
 .format-output{
@@ -348,8 +357,10 @@ body{
   min-height:100px;
   max-height:280px;
 }
-.format-output .fmt-line{transition:all 0.1s}
-.format-output .fmt-line:hover{color:var(--text);background:rgba(239,68,68,0.05)}
+.format-output .fmt-line{transition:all 0.1s;cursor:default}
+.format-output .fmt-line.clickable{cursor:pointer}
+.format-output .fmt-line.clickable:hover{color:var(--text);background:rgba(239,68,68,0.08)}
+.format-output .fmt-line.fmt-selected{color:var(--green);background:rgba(16,185,129,0.1)}
 .format-output .fmt-header{color:var(--accent);font-weight:600}
 .format-output .fmt-info{color:var(--text3)}
 .format-output .fmt-error{color:var(--red)}
@@ -611,6 +622,8 @@ body{
 @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 
 .spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.6s linear infinite;display:inline-block}
+.fmt-loading{display:flex;align-items:center;gap:10px;padding:16px;color:var(--text3);font-size:13px}
+.fmt-loading .spinner{width:20px;height:20px;border-width:2px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 .empty-state{text-align:center;padding:24px 16px;color:var(--text3);font-size:13px}
@@ -692,13 +705,13 @@ body{
       <!-- Step 3: View & Select Format -->
       <div class="wizard-slide" data-step="3">
         <div class="ws-title"><i class="fas fa-list"></i> Available Formats</div>
-        <div class="ws-desc">Review available formats and enter the format code to download.</div>
+        <div class="ws-desc" id="wizStep3Desc">Review available formats and enter the format code to download.</div>
         <div class="format-output" id="wizFormatOutput">
           <div class="fmt-line fmt-info">Fetching available formats...</div>
         </div>
         <div class="fmt-row">
-          <input class="wizard-input" id="wizFormatCode" type="text" placeholder='Format code (e.g. "299+140", or "best" for best quality)'>
-          <span style="font-size:11px;color:var(--text3);white-space:nowrap">For audio, use "bestaudio/best"</span>
+          <input class="wizard-input" id="wizFormatCode" type="text" placeholder='Format code, or "best" for best quality'>
+          <span style="font-size:11px;color:var(--text3);white-space:nowrap" id="wizFmtHint">&nbsp;</span>
         </div>
         <div class="wizard-btns">
           <button class="wizard-btn wizard-btn-secondary" onclick="wizGoTo(2)"><i class="fas fa-arrow-left"></i> Back</button>
@@ -723,6 +736,7 @@ body{
       <div class="po-size" id="wizDlSize"></div>
       <div class="pl-progress" id="wizPlaylistProgress"></div>
       <div class="po-detail" id="wizProgressDetail"></div>
+      <button class="cancel-btn" id="wizCancelBtn" onclick="cancelDownload()"><i class="fas fa-ban"></i> Cancel</button>
     </div>
 
     <!-- Update Overlay -->
@@ -794,6 +808,7 @@ body{
     <div class="po-size" id="popularDlSize"></div>
     <div class="pl-progress" id="popularPlaylistProgress"></div>
     <div class="po-detail" id="popularProgressDetail"></div>
+    <button class="cancel-btn" id="popularCancelBtn" onclick="cancelDownload()"><i class="fas fa-ban"></i> Cancel</button>
   </div>
 </div>
 
@@ -847,6 +862,7 @@ const state = {
   wizFormats: '',
   wizFormatCode: '',
   downloading: false,
+  currentDlId: null,
   theme: 'dark',
   playlistMode: true,
   activeTab: 'wizard',
@@ -988,14 +1004,37 @@ $('wizUrlInput').addEventListener('input', () => {
 $('wizFormatCode').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') wizStartDownload();
 });
+$('wizFormatOutput').addEventListener('click', (e) => {
+  const line = e.target.closest('.clickable');
+  if (!line) return;
+  $('wizFormatOutput').querySelectorAll('.fmt-selected').forEach(s => s.classList.remove('fmt-selected'));
+  line.classList.add('fmt-selected');
+  let fmt = line.dataset.fmt;
+  if (state.wizType === 'video' && fmt && !fmt.includes('+') && !fmt.includes('/')) {
+    fmt = fmt + '+bestaudio';
+  }
+  $('wizFormatCode').value = fmt;
+});
 
 async function wizFetchFormats() {
   const url = $('wizUrlInput').value.trim();
   if (!url) { showToast('Please enter a YouTube URL', 'error'); return; }
   state.wizUrl = url;
 
-  $('wizFormatOutput').innerHTML = '<div class="fmt-line fmt-info">Fetching formats...</div>';
+  const isAudioMode = state.wizType === 'audio';
+  if (isAudioMode) {
+    $('wizStep3Desc').textContent = 'Audio formats shown below. Click any to use it, or leave "best" for best quality.';
+    $('wizFormatCode').placeholder = 'Format code, or "best" for best quality';
+    $('wizFmtHint').textContent = 'Auto-converted to MP3';
+  } else {
+    $('wizStep3Desc').textContent = 'Video formats shown below. Click any to auto-merge best audio, or enter a custom code.';
+    $('wizFormatCode').placeholder = 'Format code, or "best" for best quality';
+    $('wizFmtHint').textContent = 'Audio merged automatically';
+  }
+
+  $('wizFormatOutput').innerHTML = '<div class="fmt-loading"><div class="spinner"></div> Fetching available formats...</div>';
   $('wizStep2Next').disabled = true;
+  $('wizFormatCode').value = '';
   wizGoTo(3);
 
   try {
@@ -1017,12 +1056,18 @@ async function wizFetchFormats() {
         const data = JSON.parse(e.data);
         if (data.stage === 'formats') {
           formatOutput += data.message + '\n';
-          $('wizFormatOutput').innerHTML = formatOutput.split('\n').map(l => {
+          const isAudioMode = state.wizType === 'audio';
+          const html = formatOutput.split('\n').map(l => {
             if (l.startsWith('[')) return `<div class="fmt-line fmt-info">${escapeHtml(l)}</div>`;
-            if (l.match(/^\d+/)) return `<div class="fmt-line">${escapeHtml(l)}</div>`;
+            if (l.match(/^\d+/)) {
+              if (isAudioMode && !l.includes('audio only')) return '';
+              if (!isAudioMode && l.includes('audio only')) return '';
+              return `<div class="fmt-line clickable" data-fmt="${escapeHtml(l.match(/^(\S+)/)[1])}">${escapeHtml(l)}</div>`;
+            }
             if (l.startsWith('ID') || l.startsWith('--')) return `<div class="fmt-line fmt-header">${escapeHtml(l)}</div>`;
             return `<div class="fmt-line">${escapeHtml(l)}</div>`;
           }).join('');
+          $('wizFormatOutput').innerHTML = html;
           $('wizFormatOutput').scrollTop = $('wizFormatOutput').scrollHeight;
         } else if (data.stage === 'formats_done') {
           receivedDone = true;
@@ -1056,6 +1101,19 @@ function cleanupEventSource() {
   }
 }
 
+async function cancelDownload() {
+  if (!state.currentDlId) return;
+  cleanupEventSource();
+  await api('/api/cancel/' + state.currentDlId, { method: 'POST' });
+  state.currentDlId = null;
+  if (state.downloading) {
+    state.downloading = false;
+    $('wizProgress')?.classList.remove('visible');
+    $('popularProgress')?.classList.remove('visible');
+  }
+  showToast('Download cancelled');
+}
+
 async function wizStartDownload() {
   const url = state.wizUrl;
   let formatCode = $('wizFormatCode').value.trim();
@@ -1085,6 +1143,7 @@ async function wizStartDownload() {
     showToast('Failed to start download', 'error');
     return;
   }
+  state.currentDlId = res.id;
   listenWizardProgress(res.id, url);
 }
 
@@ -1102,6 +1161,7 @@ function showWizardProgress() {
 function hideWizardProgress() {
   $('wizProgress').classList.remove('visible');
   state.downloading = false;
+  state.currentDlId = null;
 }
 
 function listenWizardProgress(id, url) {
@@ -1133,7 +1193,7 @@ function listenWizardProgress(id, url) {
       const data = JSON.parse(e.data);
       const { stage, message, progress } = data;
 
-      if (['start', 'download', 'extract', 'merge', 'done', 'error'].includes(stage)) {
+      if (['start', 'download', 'extract', 'merge', 'done', 'error', 'cancelled'].includes(stage)) {
         if (stage === 'error') {
           stepEls.forEach(s => { s.classList.remove('active', 'done'); });
           const errDiv = document.createElement('div');
@@ -1141,6 +1201,12 @@ function listenWizardProgress(id, url) {
           const errMsg = data.message || 'Failed';
           errDiv.innerHTML = '<span class="psi"><i class="fas fa-times"></i></span> Error: ' + escapeHtml(errMsg.substring(0, 300));
           $('wizProgressSteps').appendChild(errDiv);
+        } else if (stage === 'cancelled') {
+          state.currentDlId = null;
+          setTimeout(() => {
+            hideWizardProgress();
+          }, 500);
+          return;
         } else {
           activateStep(stage);
         }
@@ -1188,6 +1254,7 @@ function listenWizardProgress(id, url) {
         $('wizDlSize').textContent = '100%';
         $('wizDlSpeed').textContent = '';
         activateStep('done');
+        state.currentDlId = null;
         setTimeout(() => {
           showToast('Download complete!', 'success');
           hideWizardProgress();
@@ -1202,6 +1269,7 @@ function listenWizardProgress(id, url) {
           loadDlHistory();
         }, 1500);
       } else if (stage === 'error') {
+        state.currentDlId = null;
         setTimeout(() => {
           showToast(data.message || 'Download failed', 'error');
           hideWizardProgress();
@@ -1294,6 +1362,7 @@ async function startPopularDownload(url, format) {
     showToast('Failed to start download', 'error');
     return;
   }
+  state.currentDlId = res.id;
 
   if (dlEventSource) dlEventSource.close();
   const plContainer = $('popularPlaylistProgress');
@@ -1323,7 +1392,7 @@ async function startPopularDownload(url, format) {
       const data = JSON.parse(e.data);
       const { stage, message, progress } = data;
 
-      if (['start', 'download', 'extract', 'merge', 'done', 'error'].includes(stage)) {
+      if (['start', 'download', 'extract', 'merge', 'done', 'error', 'cancelled'].includes(stage)) {
         if (stage === 'error') {
           popStepEls.forEach(s => { s.classList.remove('active', 'done'); });
           const errDiv = document.createElement('div');
@@ -1331,6 +1400,10 @@ async function startPopularDownload(url, format) {
           const errMsg = data.message || 'Failed';
           errDiv.innerHTML = '<span class="psi"><i class="fas fa-times"></i></span> Error: ' + escapeHtml(errMsg.substring(0, 300));
           $('popularProgressSteps').appendChild(errDiv);
+        } else if (stage === 'cancelled') {
+          state.currentDlId = null;
+          setTimeout(() => { ov.classList.remove('visible'); state.downloading = false; }, 500);
+          return;
         } else {
           popActivateStep(stage);
         }
@@ -1375,6 +1448,7 @@ async function startPopularDownload(url, format) {
         $('popularDlSize').textContent = '100%';
         $('popularDlSpeed').textContent = '';
         popActivateStep('done');
+        state.currentDlId = null;
         setTimeout(() => {
           showToast('Download complete!', 'success');
           ov.classList.remove('visible');
@@ -1385,6 +1459,7 @@ async function startPopularDownload(url, format) {
           loadDlHistory();
         }, 1500);
       } else if (data.stage === 'error') {
+        state.currentDlId = null;
         setTimeout(() => {
           showToast(data.message || 'Download failed', 'error');
           ov.classList.remove('visible');
