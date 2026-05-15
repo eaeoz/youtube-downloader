@@ -130,7 +130,12 @@ function execSpawn(command, args, eventEmitter, stage) {
 
     proc.on('close', (code) => {
       if (code === 0) resolve({ stdout, stderr });
-      else reject(new Error(stderr || `Exit code ${code}`));
+      else {
+        const allLines = stderr.split('\n').filter(l => l.trim());
+        const cleanLines = allLines.filter(l => !(l.includes('[download]') && l.includes('%'))).slice(-30);
+        const cleanErr = cleanLines.join('\n').trim();
+        reject(new Error(cleanErr || `Exit code ${code}`));
+      }
     });
     proc.on('error', reject);
   });

@@ -97,6 +97,10 @@ body{
 .top-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary);transform:translateY(-1px)}
 .top-btn.close-btn:hover{background:var(--red);color:#fff;border-color:var(--red)}
 .top-btn.min-btn:hover{background:var(--yellow);color:#fff;border-color:var(--yellow)}
+.top-btn.pl-on{border-color:var(--green);color:var(--green)}
+.top-btn.pl-on:hover{background:var(--green);color:#fff;border-color:var(--green)}
+.top-btn.pl-off{border-color:var(--border);color:var(--text3)}
+.top-btn.pl-off:hover{background:var(--surface2);color:var(--text2)}
 
 /* ── Main Tabs ── */
 .main-tab-bar{
@@ -398,7 +402,7 @@ body{
 .progress-overlay .po-step .psi{width:18px;text-align:center;flex-shrink:0}
 .progress-overlay .po-step.active{border-color:var(--primary);color:var(--text);background:rgba(239,68,68,0.08)}
 .progress-overlay .po-step.done{border-color:var(--green);color:var(--green);background:rgba(16,185,129,0.08)}
-.progress-overlay .po-step.error{border-color:var(--red);color:var(--red);background:rgba(239,68,68,0.08)}
+.progress-overlay .po-step.error{border-color:var(--red);color:var(--red);background:rgba(239,68,68,0.08);word-break:break-all;max-height:60px;overflow-y:auto}
 .progress-overlay .po-speed{font-weight:400;color:var(--accent);margin-left:4px;font-size:11px}
 .progress-overlay .po-size{
   font-size:11px;color:var(--text3);text-align:center;
@@ -628,6 +632,7 @@ body{
   </div>
   <button class="top-btn" id="settingsBtn" title="Settings"><i class="fas fa-cog"></i></button>
   <button class="top-btn" id="folderBtn" title="Open Downloads"><i class="fas fa-folder-open"></i></button>
+  <button class="top-btn" id="playlistToggle" title="Playlist mode: ON"><i class="fas fa-list"></i> <span id="playlistToggleLabel" style="font-size:10px;font-weight:700">ON</span></button>
   <button class="top-btn" id="themeBtn" title="Toggle Theme"><i class="fas fa-moon"></i></button>
   <button class="top-btn min-btn" id="minBtn" title="Minimize"><i class="fas fa-window-minimize"></i></button>
   <button class="top-btn close-btn" id="closeBtn" title="Close"><i class="fas fa-times"></i></button>
@@ -711,7 +716,9 @@ body{
       <div class="po-steps" id="wizProgressSteps">
         <div class="po-step" data-step="start" data-order="0"><span class="psi"><i class="fas fa-play"></i></span> Starting...</div>
         <div class="po-step" data-step="download" data-order="1"><span class="psi"><i class="fas fa-download"></i></span> Downloading <span id="wizDlSpeed" class="po-speed"></span></div>
-        <div class="po-step" data-step="done" data-order="2"><span class="psi"><i class="fas fa-check-circle"></i></span> Complete!</div>
+        <div class="po-step" data-step="extract" data-order="2"><span class="psi"><i class="fas fa-file-audio"></i></span> Converting audio...</div>
+        <div class="po-step" data-step="merge" data-order="3"><span class="psi"><i class="fas fa-object-group"></i></span> Merging...</div>
+        <div class="po-step" data-step="done" data-order="4"><span class="psi"><i class="fas fa-check-circle"></i></span> Complete!</div>
       </div>
       <div class="po-size" id="wizDlSize"></div>
       <div class="pl-progress" id="wizPlaylistProgress"></div>
@@ -780,7 +787,9 @@ body{
     <div class="po-steps" id="popularProgressSteps">
       <div class="po-step" data-step="start" data-order="0"><span class="psi"><i class="fas fa-play"></i></span> Starting...</div>
       <div class="po-step" data-step="download" data-order="1"><span class="psi"><i class="fas fa-download"></i></span> Downloading <span id="popularDlSpeed" class="po-speed"></span></div>
-      <div class="po-step" data-step="done" data-order="2"><span class="psi"><i class="fas fa-check-circle"></i></span> Complete!</div>
+      <div class="po-step" data-step="extract" data-order="2"><span class="psi"><i class="fas fa-file-audio"></i></span> Converting audio...</div>
+      <div class="po-step" data-step="merge" data-order="3"><span class="psi"><i class="fas fa-object-group"></i></span> Merging...</div>
+      <div class="po-step" data-step="done" data-order="4"><span class="psi"><i class="fas fa-check-circle"></i></span> Complete!</div>
     </div>
     <div class="po-size" id="popularDlSize"></div>
     <div class="pl-progress" id="popularPlaylistProgress"></div>
@@ -839,6 +848,7 @@ const state = {
   wizFormatCode: '',
   downloading: false,
   theme: 'dark',
+  playlistMode: true,
   activeTab: 'wizard',
   activeSubTab: '1080p'
 };
@@ -873,6 +883,37 @@ function setTheme(t) {
 const savedTheme = localStorage.getItem('yd-theme');
 if (savedTheme) setTheme(savedTheme);
 $('themeBtn').addEventListener('click', () => setTheme(state.theme === 'dark' ? 'light' : 'dark'));
+
+/* ── Playlist Toggle ── */
+function updatePlaylistToggleUI() {
+  const btn = $('playlistToggle');
+  const label = $('playlistToggleLabel');
+  if (state.playlistMode) {
+    btn.title = 'Playlist mode: ON';
+    label.textContent = 'ON';
+    btn.classList.add('pl-on');
+    btn.classList.remove('pl-off');
+  } else {
+    btn.title = 'Playlist mode: OFF';
+    label.textContent = 'OFF';
+    btn.classList.add('pl-off');
+    btn.classList.remove('pl-on');
+  }
+  localStorage.setItem('yd-playlist-mode', state.playlistMode ? '1' : '0');
+}
+const savedPlaylistMode = localStorage.getItem('yd-playlist-mode');
+if (savedPlaylistMode !== null) state.playlistMode = savedPlaylistMode === '1';
+updatePlaylistToggleUI();
+$('playlistToggle').addEventListener('click', () => {
+  state.playlistMode = !state.playlistMode;
+  updatePlaylistToggleUI();
+  showToast(state.playlistMode ? 'Playlist detection ON' : 'Playlist detection OFF');
+});
+
+function checkIsPlaylist(url) {
+  if (!state.playlistMode) return false;
+  return url.toLowerCase().includes('list=');
+}
 
 /* ── Main Tab Switching ── */
 document.querySelectorAll('.main-tab').forEach(tab => {
@@ -1024,6 +1065,7 @@ async function wizStartDownload() {
   if (!url) { showToast('No URL', 'error'); return; }
 
   const isAudio = state.wizType === 'audio';
+  const isPlaylist = checkIsPlaylist(url);
   const payload = { url, mode: state.wizType };
 
   if (isAudio) {
@@ -1036,7 +1078,8 @@ async function wizStartDownload() {
   state.downloading = true;
   showWizardProgress();
 
-  const res = await api('/api/download', { method: 'POST', body: JSON.stringify(payload) });
+  const endpoint = isPlaylist ? '/api/download-playlist' : '/api/download';
+  const res = await api(endpoint, { method: 'POST', body: JSON.stringify(payload) });
   if (!res || !res.id) {
     hideWizardProgress();
     showToast('Failed to start download', 'error');
@@ -1064,7 +1107,7 @@ function hideWizardProgress() {
 function listenWizardProgress(id, url) {
   if (dlEventSource) dlEventSource.close();
 
-  const isPlaylist = url.toLowerCase().includes('list=');
+  const isPlaylist = checkIsPlaylist(url);
   const plContainer = $('wizPlaylistProgress');
   const stepEls = Array.from($('wizProgress').querySelectorAll('.po-step')).sort((a, b) => parseInt(a.dataset.order || 99) - parseInt(b.dataset.order || 99));
 
@@ -1090,12 +1133,13 @@ function listenWizardProgress(id, url) {
       const data = JSON.parse(e.data);
       const { stage, message, progress } = data;
 
-      if (stage === 'start' || stage === 'download' || stage === 'done' || stage === 'error') {
+      if (['start', 'download', 'extract', 'merge', 'done', 'error'].includes(stage)) {
         if (stage === 'error') {
           stepEls.forEach(s => { s.classList.remove('active', 'done'); });
           const errDiv = document.createElement('div');
           errDiv.className = 'po-step error';
-          errDiv.innerHTML = '<span class="psi"><i class="fas fa-times"></i></span> Error: ' + (data.message || 'Failed');
+          const errMsg = data.message || 'Failed';
+          errDiv.innerHTML = '<span class="psi"><i class="fas fa-times"></i></span> Error: ' + escapeHtml(errMsg.substring(0, 300));
           $('wizProgressSteps').appendChild(errDiv);
         } else {
           activateStep(stage);
@@ -1230,7 +1274,7 @@ document.querySelectorAll('.popularUrlInput').forEach(input => {
 async function startPopularDownload(url, format) {
   state.downloading = true;
   const isAudio = format === 'mp3';
-  const isPlaylist = url.toLowerCase().includes('list=');
+  const isPlaylist = checkIsPlaylist(url);
 
   const ov = $('popularProgress');
   ov.classList.add('visible');
@@ -1279,12 +1323,13 @@ async function startPopularDownload(url, format) {
       const data = JSON.parse(e.data);
       const { stage, message, progress } = data;
 
-      if (stage === 'start' || stage === 'download' || stage === 'done' || stage === 'error') {
+      if (['start', 'download', 'extract', 'merge', 'done', 'error'].includes(stage)) {
         if (stage === 'error') {
           popStepEls.forEach(s => { s.classList.remove('active', 'done'); });
           const errDiv = document.createElement('div');
           errDiv.className = 'po-step error';
-          errDiv.innerHTML = '<span class="psi"><i class="fas fa-times"></i></span> Error: ' + (data.message || 'Failed');
+          const errMsg = data.message || 'Failed';
+          errDiv.innerHTML = '<span class="psi"><i class="fas fa-times"></i></span> Error: ' + escapeHtml(errMsg.substring(0, 300));
           $('popularProgressSteps').appendChild(errDiv);
         } else {
           popActivateStep(stage);
