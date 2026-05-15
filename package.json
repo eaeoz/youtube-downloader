@@ -1,0 +1,74 @@
+{
+  "name": "youtube-downloader",
+  "version": "1.0.0",
+  "description": "Modern YouTube downloader with wizard & quick download modes",
+  "main": "app/main.js",
+  "author": {
+    "name": "Sedat Ergoz",
+    "email": "sedatergoz@gmail.com"
+  },
+  "scripts": {
+    "start": "electron .",
+    "build": "npx electron-builder --win --x64 --publish never",
+    "build:portable": "npx electron-builder --win portable --x64 --publish never",
+    "build:setup": "npx electron-builder --win nsis --x64 --publish never",
+    "postinstall": "node scripts/create-icon.js && node scripts/download-ytdlp.js",
+    "create-icons": "node scripts/create-icon.js",
+    "download-ytdlp": "node scripts/download-ytdlp.js"
+  },
+  "build": {
+    "appId": "com.youtubedownloader.app",
+    "productName": "YouTube Downloader",
+    "copyright": "Copyright © 2026 Sedat Ergoz",
+    "directories": {
+      "output": "dist"
+    },
+    "extraResources": [
+      {
+        "from": "bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "asar": false,
+    "win": {
+      "icon": "data/icon.ico",
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "installerIcon": "data/icon.ico",
+      "uninstallerIcon": "data/icon.ico",
+      "installerHeaderIcon": "data/icon.ico",
+      "artifactName": "${productName} Setup ${version}.${ext}",
+      "shortcutName": "YouTube Downloader"
+    },
+    "portable": {
+      "artifactName": "${productName}_portable_${version}.${ext}"
+    }
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "ffmpeg-static": "^5.2.0"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.13.3"
+  }
+}

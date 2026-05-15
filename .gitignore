@@ -1,0 +1,9 @@
+node_modules/
+dist/
+downloads/
+bin/yt-dlp.exe
+data/icon.png
+data/icon.ico
+settings.json
+downloads-state.json
+*.log

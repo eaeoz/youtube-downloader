@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YT-DL</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --bg2: #12121a;
+  --surface: #1a1a28;
+  --surface2: #22223a;
+  --border: #2a2a44;
+  --text: #e8e8f0;
+  --text2: #8888aa;
+  --text3: #666688;
+  --primary: #ef4444;
+  --primary-glow: rgba(239,68,68,0.3);
+  --primary-hover: #f87171;
+  --accent: #06b6d4;
+  --green: #10b981;
+  --green-glow: rgba(16,185,129,0.3);
+  --yellow: #f59e0b;
+  --red: #ef4444;
+  --orange: #f97316;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-xs: 6px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.5);
+  --transition: 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+
+[data-theme="light"] {
+  --bg: #f0f0f6;
+  --bg2: #ffffff;
+  --surface: #ffffff;
+  --surface2: #f0f0f6;
+  --border: #d0d0e0;
+  --text: #1a1a2e;
+  --text2: #666680;
+  --text3: #9999aa;
+  --shadow: 0 8px 32px rgba(0,0,0,0.08);
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  height:100vh;display:flex;flex-direction:column;
+  transition:background var(--transition),color var(--transition);
+  user-select:none;
+}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:var(--primary)}
+
+/* ── Top Bar ── */
+.topbar{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 16px;
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  -webkit-app-region:drag;
+  flex-shrink:0;
+}
+.topbar .logo{
+  display:flex;align-items:center;gap:8px;
+  font-size:17px;font-weight:700;
+  margin-right:auto;
+}
+.topbar .logo i{
+  font-size:20px;
+  background:linear-gradient(135deg,var(--primary),var(--accent));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+.topbar .logo .ver{
+  font-size:10px;font-weight:500;
+  color:var(--text3);
+  -webkit-text-fill-color:var(--text3);
+  margin-top:4px;
+}
+.top-btn{
+  width:34px;height:34px;border-radius:var(--radius-xs);
+  border:1px solid var(--border);
+  background:var(--surface);
+  color:var(--text2);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all var(--transition);
+  font-size:14px;
+  -webkit-app-region:no-drag;
+}
+.top-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary);transform:translateY(-1px)}
+.top-btn.close-btn:hover{background:var(--red);color:#fff;border-color:var(--red)}
+.top-btn.min-btn:hover{background:var(--yellow);color:#fff;border-color:var(--yellow)}
+
+/* ── Main Tabs ── */
+.main-tab-bar{
+  display:flex;gap:0;
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  padding:0 16px;
+  flex-shrink:0;
+  -webkit-app-region:no-drag;
+}
+.main-tab{
+  padding:12px 24px;
+  font-size:14px;font-weight:600;
+  color:var(--text3);
+  cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all var(--transition);
+  position:relative;
+  display:flex;align-items:center;gap:8px;
+  background:none;border-top:none;border-left:none;border-right:none;
+  font-family:inherit;
+}
+.main-tab:hover{color:var(--text2)}
+.main-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+.main-tab i{font-size:13px}
+.main-tab.active i{text-shadow:0 0 8px var(--primary-glow)}
+
+/* ── Tab Content ── */
+.tab-content{
+  flex:1;display:none;flex-direction:column;
+  overflow:hidden;
+  position:relative;
+}
+.tab-content.active{display:flex}
+
+/* ── Sub Tabs (Popular) ── */
+.sub-tab-bar{
+  display:flex;gap:4px;
+  padding:12px 16px 0;
+  flex-shrink:0;
+}
+.sub-tab{
+  padding:8px 18px;
+  font-size:13px;font-weight:500;
+  color:var(--text3);
+  cursor:pointer;
+  border-radius:var(--radius-sm) var(--radius-sm) 0 0;
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-bottom:none;
+  transition:all var(--transition);
+  position:relative;
+  font-family:inherit;
+}
+.sub-tab:hover{color:var(--text2);background:var(--surface)}
+.sub-tab.active{
+  color:var(--primary);
+  background:var(--surface);
+  border-color:var(--border);
+}
+.sub-tab i{margin-right:6px;font-size:12px}
+
+/* ── Sub Tab Panels ── */
+.sub-panel{
+  display:none;flex:1;
+  padding:16px;
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  flex-direction:column;
+  gap:14px;
+}
+.sub-panel.active{display:flex}
+
+.sub-panel .panel-title{
+  font-size:15px;font-weight:600;
+  display:flex;align-items:center;gap:8px;
+}
+.sub-panel .panel-title i{color:var(--primary)}
+.sub-panel .panel-desc{
+  font-size:12px;color:var(--text3);
+  line-height:1.5;
+}
+
+/* ── URL Input Row ── */
+.url-row{
+  display:flex;gap:8px;align-items:center;
+}
+.url-row input{
+  flex:1;
+  padding:12px 16px;
+  border-radius:var(--radius-sm);
+  border:2px solid var(--border);
+  background:var(--bg2);
+  color:var(--text);
+  font-size:14px;outline:none;
+  transition:all var(--transition);
+  font-family:inherit;
+}
+.url-row input:focus{border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-glow)}
+.url-row input::placeholder{color:var(--text3)}
+.url-row .dl-btn{
+  padding:12px 20px;
+  border-radius:var(--radius-sm);
+  border:none;
+  background:linear-gradient(135deg,var(--primary),#dc2626);
+  color:#fff;font-size:14px;font-weight:600;
+  cursor:pointer;transition:all var(--transition);
+  display:flex;align-items:center;gap:8px;
+  white-space:nowrap;
+  font-family:inherit;
+}
+.url-row .dl-btn:hover{transform:scale(1.03);box-shadow:0 4px 16px var(--primary-glow)}
+.url-row .dl-btn:active{transform:scale(0.97)}
+.url-row .dl-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+
+/* ── Paste Hint ── */
+.paste-hint{
+  font-size:11px;color:var(--text3);text-align:center;
+  opacity:0.5;
+  transition:opacity var(--transition);
+  min-height:16px;
+}
+
+/* ── Wizard ── */
+.wizard-container{
+  flex:1;display:flex;flex-direction:column;
+  padding:16px;
+  position:relative;
+  overflow:hidden;
+}
+.wizard-steps{
+  position:relative;
+  flex:1;
+  display:flex;
+}
+.wizard-slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;gap:16px;
+  padding:8px 0;
+  opacity:0;
+  transform:translateX(40px);
+  transition:all 0.35s cubic-bezier(0.4,0,0.2,1);
+  pointer-events:none;
+}
+.wizard-slide.active{
+  opacity:1;
+  transform:translateX(0);
+  pointer-events:all;
+}
+.wizard-slide.exit-left{
+  opacity:0;
+  transform:translateX(-40px);
+}
+.wizard-slide.enter-right{
+  opacity:0;
+  transform:translateX(40px);
+}
+
+.wizard-slide .ws-title{
+  font-size:18px;font-weight:700;
+  display:flex;align-items:center;gap:10px;
+}
+.wizard-slide .ws-title i{color:var(--primary)}
+.wizard-slide .ws-desc{
+  font-size:13px;color:var(--text3);
+  line-height:1.5;
+}
+
+/* Wizard choice cards */
+.choice-grid{
+  display:flex;gap:12px;
+  margin:8px 0;
+}
+.choice-card{
+  flex:1;
+  padding:24px 16px;
+  border-radius:var(--radius);
+  border:2px solid var(--border);
+  background:var(--bg2);
+  cursor:pointer;
+  transition:all var(--transition);
+  text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+}
+.choice-card:hover{border-color:var(--primary);background:rgba(239,68,68,0.05);transform:translateY(-2px)}
+.choice-card.selected{border-color:var(--primary);background:rgba(239,68,68,0.1);box-shadow:0 0 20px var(--primary-glow)}
+.choice-card .cc-icon{font-size:36px}
+.choice-card .cc-label{font-size:15px;font-weight:600}
+.choice-card .cc-desc{font-size:12px;color:var(--text3)}
+
+.wizard-input{
+  padding:12px 16px;
+  border-radius:var(--radius-sm);
+  border:2px solid var(--border);
+  background:var(--bg2);
+  color:var(--text);
+  font-size:14px;outline:none;
+  transition:all var(--transition);
+  font-family:inherit;
+  width:100%;
+}
+.wizard-input:focus{border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-glow)}
+
+.wizard-btns{
+  display:flex;gap:8px;
+  margin-top:auto;
+  padding-top:12px;
+}
+.wizard-btn{
+  padding:10px 24px;
+  border-radius:var(--radius-sm);
+  border:none;
+  font-size:14px;font-weight:600;
+  cursor:pointer;
+  transition:all var(--transition);
+  display:flex;align-items:center;gap:8px;
+  font-family:inherit;
+}
+.wizard-btn-primary{
+  background:linear-gradient(135deg,var(--primary),#dc2626);
+  color:#fff;
+}
+.wizard-btn-primary:hover{transform:scale(1.03);box-shadow:0 4px 16px var(--primary-glow)}
+.wizard-btn-secondary{
+  background:var(--surface2);
+  color:var(--text2);
+  border:1px solid var(--border);
+}
+.wizard-btn-secondary:hover{background:var(--border);color:var(--text)}
+.wizard-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+
+/* Format output */
+.format-output{
+  flex:1;
+  padding:12px 14px;
+  border-radius:var(--radius-sm);
+  background:var(--bg2);
+  border:1px solid var(--border);
+  overflow-y:auto;
+  font-family:'Consolas','Courier New',monospace;
+  font-size:12px;
+  line-height:1.6;
+  color:var(--text2);
+  white-space:pre-wrap;
+  min-height:100px;
+  max-height:280px;
+}
+.format-output .fmt-line{transition:all 0.1s}
+.format-output .fmt-line:hover{color:var(--text);background:rgba(239,68,68,0.05)}
+.format-output .fmt-header{color:var(--accent);font-weight:600}
+.format-output .fmt-info{color:var(--text3)}
+.format-output .fmt-error{color:var(--red)}
+
+/* Format code input */
+.fmt-row{
+  display:flex;gap:8px;align-items:center;
+}
+.fmt-row input{
+  flex:1;
+  padding:10px 14px;
+  border-radius:var(--radius-sm);
+  border:2px solid var(--border);
+  background:var(--bg2);
+  color:var(--text);
+  font-size:13px;outline:none;
+  transition:all var(--transition);
+  font-family:inherit;
+}
+.fmt-row input:focus{border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-glow)}
+.fmt-row input::placeholder{color:var(--text3)}
+
+/* ── Progress Overlay ── */
+.progress-overlay{
+  display:none;position:absolute;inset:0;
+  background:var(--bg);z-index:50;
+  flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;padding:32px;
+}
+.progress-overlay.visible{display:flex}
+.progress-overlay .po-icon{
+  font-size:40px;color:var(--primary);
+  animation:pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse{
+  0%,100%{opacity:1;transform:scale(1)}
+  50%{opacity:0.6;transform:scale(1.1)}
+}
+.progress-overlay .po-title{font-size:17px;font-weight:600;text-align:center}
+.progress-overlay .po-steps{
+  width:100%;max-width:420px;
+  display:flex;flex-direction:column;gap:6px;
+}
+.progress-overlay .po-step{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 12px;border-radius:var(--radius-sm);
+  background:var(--surface);border:1px solid var(--border);
+  font-size:12px;color:var(--text2);transition:all 0.3s;
+}
+.progress-overlay .po-step .psi{width:18px;text-align:center;flex-shrink:0}
+.progress-overlay .po-step.active{border-color:var(--primary);color:var(--text);background:rgba(239,68,68,0.08)}
+.progress-overlay .po-step.done{border-color:var(--green);color:var(--green);background:rgba(16,185,129,0.08)}
+.progress-overlay .po-step.error{border-color:var(--red);color:var(--red);background:rgba(239,68,68,0.08)}
+.progress-overlay .po-bar{
+  width:100%;max-width:420px;height:4px;
+  background:var(--border);border-radius:2px;overflow:hidden;
+}
+.progress-overlay .po-bar .fill{
+  height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));
+  border-radius:2px;transition:width 0.3s;width:0%;
+}
+.progress-overlay .po-detail{font-size:12px;color:var(--text3);text-align:center;max-width:420px;word-break:break-all}
+
+/* ── Playlist Progress ── */
+.pl-progress{
+  display:none;width:100%;max-width:420px;
+  flex-direction:column;gap:4px;
+  max-height:200px;overflow-y:auto;
+}
+.pl-progress.visible{display:flex}
+.pl-item{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 10px;border-radius:var(--radius-xs);
+  background:var(--surface);border:1px solid var(--border);
+  font-size:11px;transition:all 0.3s;
+  animation:slideIn 0.3s ease both;
+}
+@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+.pl-item .pli-num{
+  width:20px;height:20px;border-radius:50%;
+  background:var(--bg2);color:var(--text3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;flex-shrink:0;
+}
+.pl-item .pli-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl-item .pli-bar{
+  width:60px;height:3px;
+  background:var(--border);border-radius:2px;overflow:hidden;flex-shrink:0;
+}
+.pl-item .pli-bar .fill{
+  height:100%;width:0%;
+  background:linear-gradient(90deg,var(--primary),var(--accent));
+  border-radius:2px;transition:width 0.4s ease;
+}
+.pl-item .pli-status{font-size:10px;color:var(--text3);flex-shrink:0;width:30px;text-align:right}
+.pl-item.done{border-color:var(--green);background:rgba(16,185,129,0.05)}
+.pl-item.done .pli-status{color:var(--green)}
+.pl-item.downloading{border-color:var(--primary);background:rgba(239,68,68,0.05)}
+.pl-item.pending{opacity:0.6}
+
+/* ── yt-dlp Status Banner ── */
+.ytdlp-banner{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;
+  border-radius:var(--radius-sm);
+  background:rgba(245,158,11,0.08);
+  border:1px solid rgba(245,158,11,0.3);
+  font-size:12px;
+  margin-bottom:8px;
+}
+.ytdlp-banner.success{background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.3)}
+.ytdlp-banner .yb-icon{font-size:16px;flex-shrink:0}
+.ytdlp-banner .yb-text{flex:1}
+.ytdlp-banner .yb-btn{
+  padding:5px 12px;border-radius:var(--radius-xs);
+  border:none;font-size:11px;font-weight:500;
+  cursor:pointer;transition:all var(--transition);
+  background:var(--primary);color:#fff;
+  font-family:inherit;
+}
+.ytdlp-banner .yb-btn:hover{opacity:0.9}
+
+/* ── Settings Modal ── */
+.modal-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);
+  z-index:200;align-items:center;justify-content:center;
+  -webkit-app-region:no-drag;
+}
+.modal-overlay.open{display:flex}
+.modal{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);width:90%;max-width:460px;
+  max-height:90vh;display:flex;flex-direction:column;
+  box-shadow:0 24px 80px rgba(0,0,0,0.5);
+  animation:modalIn 0.2s ease;
+}
+@keyframes modalIn{from{opacity:0;transform:scale(0.95) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.modal-header{
+  display:flex;align-items:center;gap:10px;
+  padding:20px 24px 0 24px;flex-shrink:0;
+}
+.modal-header h2{font-size:17px;font-weight:700;flex:1;display:flex;align-items:center;gap:8px}
+.modal-close{background:none;border:none;color:var(--text2);cursor:pointer;font-size:20px;padding:4px}
+.modal-close:hover{color:var(--red)}
+.modal-body{padding:20px 24px 24px;overflow-y:auto;flex:1}
+.settings-section{margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.settings-section:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+.settings-section h4{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px}
+
+.setting-input{width:100%;padding:10px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px;outline:none;font-family:inherit;transition:border var(--transition)}
+.setting-input:focus{border-color:var(--primary)}
+.setting-input:read-only{color:var(--text3);cursor:not-allowed}
+
+.setting-btn{padding:8px 16px;border-radius:var(--radius-xs);border:none;font-size:13px;font-weight:500;cursor:pointer;transition:all var(--transition);display:inline-flex;align-items:center;gap:6px;font-family:inherit}
+.setting-btn-primary{background:var(--primary);color:#fff}
+.setting-btn-primary:hover{background:var(--primary-hover)}
+.setting-btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.setting-btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+.setting-btn-sm{padding:6px 12px;font-size:12px}
+
+.downloads-list{margin-top:8px;display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto}
+.dl-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius-xs);border:1px solid var(--border);font-size:12px}
+.dl-item .dli-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dl-item .dli-actions{display:flex;gap:4px}
+.dl-item .dli-btn{background:none;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:4px;border-radius:4px;transition:all 0.15s}
+.dl-item .dli-btn:hover{background:var(--surface2)}
+.dl-item .dli-btn.rm:hover{color:var(--red)}
+
+/* ── Update Overlay ── */
+.update-overlay{
+  display:none;position:absolute;inset:0;
+  background:var(--bg);z-index:60;
+  flex-direction:column;align-items:center;justify-content:center;
+  gap:20px;padding:40px;
+}
+.update-overlay.visible{display:flex}
+.update-ring-wrap{
+  position:relative;width:130px;height:130px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.update-ring{
+  position:absolute;inset:0;border-radius:50%;
+}
+.update-ring::before{
+  content:'';position:absolute;inset:-3px;border-radius:50%;
+  background:conic-gradient(var(--primary),var(--accent),var(--green),var(--primary) 100%);
+  animation:updateSpin 2s linear infinite;
+}
+.update-ring::after{
+  content:'';position:absolute;inset:3px;border-radius:50%;background:var(--bg);
+}
+.update-orbit{
+  position:absolute;inset:0;z-index:2;animation:updateSpin 2.5s linear infinite;
+}
+.update-orbit-dot{
+  position:absolute;width:10px;height:10px;border-radius:50%;
+  background:var(--accent);top:-5px;left:calc(50% - 5px);
+  box-shadow:0 0 14px var(--accent),0 0 30px rgba(6,182,212,0.3);
+}
+.update-center-icon{
+  font-size:38px;color:var(--accent);z-index:3;
+  animation:iconCycle 3s ease-in-out infinite;
+  filter:drop-shadow(0 0 10px rgba(6,182,212,0.4));
+}
+@keyframes updateSpin{to{transform:rotate(360deg)}}
+@keyframes iconCycle{
+  0%,100%{color:var(--accent);filter:drop-shadow(0 0 10px rgba(6,182,212,0.4))}
+  33%{color:var(--primary);filter:drop-shadow(0 0 10px rgba(239,68,68,0.4))}
+  66%{color:var(--green);filter:drop-shadow(0 0 10px rgba(16,185,129,0.4))}
+}
+.update-title{
+  font-size:20px;font-weight:700;text-align:center;
+  background:linear-gradient(135deg,var(--primary),var(--accent),var(--green));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-size:200% 200%;animation:titleShimmer 3s ease infinite;
+}
+@keyframes titleShimmer{
+  0%,100%{background-position:0% 50%}50%{background-position:100% 50%}
+}
+.update-status{
+  font-size:13px;color:var(--text3);text-align:center;
+  min-height:20px;transition:all 0.3s;
+}
+.update-bar-wrap{
+  width:260px;height:4px;background:var(--border);
+  border-radius:4px;overflow:hidden;
+}
+.update-bar-fill{
+  height:100%;width:0%;border-radius:4px;
+  background:linear-gradient(90deg,var(--primary),var(--accent),var(--green));
+  background-size:200% 100%;animation:barShimmer 2s linear infinite;
+  transition:width 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+@keyframes barShimmer{
+  0%{background-position:200% 0}100%{background-position:-200% 0}
+}
+
+/* ── Toast ── */
+.toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  padding:10px 20px;border-radius:var(--radius-sm);
+  background:var(--surface);border:1px solid var(--border);
+  box-shadow:var(--shadow);font-size:13px;
+  z-index:300;display:none;animation:toastIn 0.3s ease;
+  -webkit-app-region:no-drag;
+}
+.toast.show{display:flex;align-items:center;gap:8px}
+.toast.success{border-color:var(--green)}
+.toast.error{border-color:var(--red)}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.6s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.empty-state{text-align:center;padding:24px 16px;color:var(--text3);font-size:13px}
+.empty-state i{font-size:28px;margin-bottom:8px;opacity:0.4}
+
+@media(max-height:700px){
+  .main{padding:16px}
+  .format-output{max-height:160px}
+  .pl-progress{max-height:120px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <i class="fas fa-download"></i>YT-DL
+    <span class="ver" id="versionLabel"></span>
+  </div>
+  <button class="top-btn" id="settingsBtn" title="Settings"><i class="fas fa-cog"></i></button>
+  <button class="top-btn" id="folderBtn" title="Open Downloads"><i class="fas fa-folder-open"></i></button>
+  <button class="top-btn" id="themeBtn" title="Toggle Theme"><i class="fas fa-moon"></i></button>
+  <button class="top-btn min-btn" id="minBtn" title="Minimize"><i class="fas fa-window-minimize"></i></button>
+  <button class="top-btn close-btn" id="closeBtn" title="Close"><i class="fas fa-times"></i></button>
+</div>
+
+<div class="main-tab-bar">
+  <button class="main-tab active" data-tab="wizard"><i class="fas fa-wand-magic-sparkles"></i> Wizard</button>
+  <button class="main-tab" data-tab="popular"><i class="fas fa-fire"></i> Popular</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- WIZARD TAB -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="tab-content active" id="tabWizard">
+  <div class="wizard-container">
+    <div id="ytdlpBanner" class="ytdlp-banner" style="display:none">
+      <div class="yb-icon">&#9888;</div>
+      <div class="yb-text" id="ytdlpBannerText">yt-dlp not found. Download it to start downloading.</div>
+      <button class="yb-btn" id="downloadYtdlpBtn">Download</button>
+    </div>
+
+    <div class="wizard-steps" id="wizardSteps">
+
+      <!-- Step 1: Choose Type -->
+      <div class="wizard-slide active" data-step="1">
+        <div class="ws-title"><i class="fas fa-question-circle"></i> What do you want to download?</div>
+        <div class="ws-desc">Choose the type of media you want to download from YouTube.</div>
+        <div class="choice-grid">
+          <div class="choice-card" data-choice="video" onclick="wizSelectType('video')">
+            <div class="cc-icon">&#127916;</div>
+            <div class="cc-label">Video</div>
+            <div class="cc-desc">Download in MP4 format with your preferred quality</div>
+          </div>
+          <div class="choice-card" data-choice="audio" onclick="wizSelectType('audio')">
+            <div class="cc-icon">&#127925;</div>
+            <div class="cc-label">Audio</div>
+            <div class="cc-desc">Extract audio as high-quality MP3</div>
+          </div>
+        </div>
+        <div class="wizard-btns">
+          <button class="wizard-btn wizard-btn-primary" id="wizStep1Next" onclick="wizGoTo(2)" disabled><i class="fas fa-arrow-right"></i> Next</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Enter URL -->
+      <div class="wizard-slide" data-step="2">
+        <div class="ws-title"><i class="fas fa-link"></i> Enter YouTube URL</div>
+        <div class="ws-desc">Paste the YouTube video or playlist URL below.</div>
+        <input class="wizard-input" id="wizUrlInput" type="text" placeholder="https://youtube.com/watch?v=..." autocomplete="off" spellcheck="false">
+        <div class="paste-hint"><i class="fas fa-clipboard"></i> Right‑click to paste</div>
+        <div class="wizard-btns">
+          <button class="wizard-btn wizard-btn-secondary" onclick="wizGoTo(1)"><i class="fas fa-arrow-left"></i> Back</button>
+          <button class="wizard-btn wizard-btn-primary" id="wizStep2Next" onclick="wizFetchFormats()"><i class="fas fa-search"></i> Fetch Formats</button>
+        </div>
+      </div>
+
+      <!-- Step 3: View & Select Format -->
+      <div class="wizard-slide" data-step="3">
+        <div class="ws-title"><i class="fas fa-list"></i> Available Formats</div>
+        <div class="ws-desc">Review available formats and enter the format code to download.</div>
+        <div class="format-output" id="wizFormatOutput">
+          <div class="fmt-line fmt-info">Fetching available formats...</div>
+        </div>
+        <div class="fmt-row">
+          <input class="wizard-input" id="wizFormatCode" type="text" placeholder='Format code (e.g. "299+140", or "best" for best quality)'>
+          <span style="font-size:11px;color:var(--text3);white-space:nowrap">For audio, use "bestaudio/best"</span>
+        </div>
+        <div class="wizard-btns">
+          <button class="wizard-btn wizard-btn-secondary" onclick="wizGoTo(2)"><i class="fas fa-arrow-left"></i> Back</button>
+          <button class="wizard-btn wizard-btn-primary" id="wizDownloadBtn" onclick="wizStartDownload()"><i class="fas fa-download"></i> Download</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Wizard Progress Overlay -->
+    <div class="progress-overlay" id="wizProgress">
+      <div class="po-icon"><i class="fas fa-circle-notch"></i></div>
+      <div class="po-title" id="wizProgressTitle">Downloading...</div>
+      <div class="po-bar"><div class="fill" id="wizProgressBar"></div></div>
+      <div class="po-steps" id="wizProgressSteps">
+        <div class="po-step" data-step="start"><span class="psi"><i class="fas fa-play"></i></span> Starting download...</div>
+        <div class="po-step" data-step="download"><span class="psi"><i class="fas fa-download"></i></span> Downloading media...</div>
+        <div class="po-step" data-step="extract"><span class="psi"><i class="fas fa-file-audio"></i></span> Extracting audio...</div>
+        <div class="po-step" data-step="merge"><span class="psi"><i class="fas fa-object-group"></i></span> Merging video & audio...</div>
+        <div class="po-step" data-step="done"><span class="psi"><i class="fas fa-check-circle"></i></span> Complete!</div>
+      </div>
+      <div class="pl-progress" id="wizPlaylistProgress"></div>
+      <div class="po-detail" id="wizProgressDetail"></div>
+    </div>
+
+    <!-- Update Overlay -->
+    <div class="update-overlay" id="updateOverlay">
+      <div class="update-ring-wrap">
+        <div class="update-ring"></div>
+        <div class="update-orbit"><div class="update-orbit-dot"></div></div>
+        <div class="update-center-icon"><i class="fas fa-bolt"></i></div>
+      </div>
+      <div class="update-title" id="updateTitle">Updating yt-dlp</div>
+      <div class="update-status" id="updateStatus">Preparing...</div>
+      <div class="update-bar-wrap"><div class="update-bar-fill" id="updateBarFill"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- POPULAR TAB -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="tab-content" id="tabPopular">
+  <div class="sub-tab-bar">
+    <button class="sub-tab active" data-subtab="1080p"><i class="fas fa-film"></i> 1080p</button>
+    <button class="sub-tab" data-subtab="720p"><i class="fas fa-film"></i> 720p</button>
+    <button class="sub-tab" data-subtab="mp3"><i class="fas fa-music"></i> MP3</button>
+  </div>
+
+  <div class="sub-panel active" id="panel1080p">
+    <div class="panel-title"><i class="fas fa-download"></i> Download 1080p Video</div>
+    <div class="panel-desc">Download the highest quality Full HD video (1080p) merged with best audio.</div>
+    <div class="url-row">
+      <input type="text" class="popularUrlInput" placeholder="Paste YouTube URL here..." autocomplete="off" spellcheck="false">
+      <button class="dl-btn popularDlBtn" data-format="1080p"><i class="fas fa-download"></i> Download</button>
+    </div>
+    <div class="paste-hint"><i class="fas fa-clipboard"></i> Right‑click to paste</div>
+  </div>
+
+  <div class="sub-panel" id="panel720p">
+    <div class="panel-title"><i class="fas fa-download"></i> Download 720p Video</div>
+    <div class="panel-desc">Download HD video (720p) merged with best audio - smaller file size.</div>
+    <div class="url-row">
+      <input type="text" class="popularUrlInput" placeholder="Paste YouTube URL here..." autocomplete="off" spellcheck="false">
+      <button class="dl-btn popularDlBtn" data-format="720p"><i class="fas fa-download"></i> Download</button>
+    </div>
+    <div class="paste-hint"><i class="fas fa-clipboard"></i> Right‑click to paste</div>
+  </div>
+
+  <div class="sub-panel" id="panelmp3">
+    <div class="panel-title"><i class="fas fa-music"></i> Download MP3 Audio</div>
+    <div class="panel-desc">Extract and download high-quality audio as MP3 from any YouTube video.</div>
+    <div class="url-row">
+      <input type="text" class="popularUrlInput" placeholder="Paste YouTube URL here..." autocomplete="off" spellcheck="false">
+      <button class="dl-btn popularDlBtn" data-format="mp3"><i class="fas fa-download"></i> Download</button>
+    </div>
+    <div class="paste-hint"><i class="fas fa-clipboard"></i> Right‑click to paste</div>
+  </div>
+
+  <!-- Popular Progress Overlay -->
+  <div class="progress-overlay" id="popularProgress" style="position:absolute">
+    <div class="po-icon"><i class="fas fa-circle-notch"></i></div>
+    <div class="po-title" id="popularProgressTitle">Downloading...</div>
+    <div class="po-bar"><div class="fill" id="popularProgressBar"></div></div>
+    <div class="po-steps" id="popularProgressSteps">
+      <div class="po-step" data-step="start"><span class="psi"><i class="fas fa-play"></i></span> Starting download...</div>
+      <div class="po-step" data-step="download"><span class="psi"><i class="fas fa-download"></i></span> Downloading media...</div>
+      <div class="po-step" data-step="done"><span class="psi"><i class="fas fa-check-circle"></i></span> Complete!</div>
+    </div>
+    <div class="pl-progress" id="popularPlaylistProgress"></div>
+    <div class="po-detail" id="popularProgressDetail"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- SETTINGS MODAL -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2><i class="fas fa-cog" style="color:var(--primary)"></i> Settings</h2>
+      <button class="modal-close" id="closeSettings"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+
+      <div class="settings-section">
+        <h4><i class="fas fa-download" style="margin-right:4px"></i> Download Location</h4>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="downloadPath" readonly class="setting-input">
+          <button class="setting-btn setting-btn-outline setting-btn-sm" id="browsePath"><i class="fas fa-folder-open"></i></button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h4><i class="fas fa-history" style="margin-right:4px"></i> Download History</h4>
+        <div class="downloads-list" id="dlHistoryList">
+          <div class="empty-state"><i class="fas fa-download"></i><p>No downloads yet</p></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="setting-btn setting-btn-primary setting-btn-sm" id="clearDlBtn"><i class="fas fa-trash"></i> Clear History</button>
+        </div>
+      </div>
+
+      <div class="settings-section" style="border-bottom:none;margin-bottom:0;padding-bottom:0">
+        <h4><i class="fas fa-sync-alt" style="margin-right:4px"></i> yt-dlp Update</h4>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:8px" id="ytdlpStatusText">Status: Checking...</p>
+        <button class="setting-btn setting-btn-primary" id="updateYtdlpBtn"><i class="fas fa-sync-alt"></i> Update Now</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const state = {
+  wizType: null,
+  wizUrl: '',
+  wizFormats: '',
+  wizFormatCode: '',
+  downloading: false,
+  theme: 'dark',
+  activeTab: 'wizard',
+  activeSubTab: '1080p'
+};
+let dlEventSource = null;
+
+async function api(url, opts = {}) {
+  try {
+    const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+    const text = await res.text();
+    return text ? JSON.parse(text) : null;
+  } catch (e) { showToast(e.message, 'error'); return null; }
+}
+
+function showToast(msg, type = 'success') {
+  const t = $('toast');
+  if (typeof msg === 'string') {
+    t.innerHTML = msg;
+  } else {
+    t.innerHTML = msg;
+  }
+  t.className = 'toast show ' + type;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function setTheme(t) {
+  state.theme = t;
+  document.documentElement.setAttribute('data-theme', t);
+  $('themeBtn').innerHTML = t === 'dark' ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
+  localStorage.setItem('yd-theme', t);
+}
+const savedTheme = localStorage.getItem('yd-theme');
+if (savedTheme) setTheme(savedTheme);
+$('themeBtn').addEventListener('click', () => setTheme(state.theme === 'dark' ? 'light' : 'dark'));
+
+/* ── Main Tab Switching ── */
+document.querySelectorAll('.main-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    $(`tab${tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1)}`).classList.add('active');
+    state.activeTab = tab.dataset.tab;
+  });
+});
+
+/* ── Sub Tab Switching ── */
+document.querySelectorAll('.sub-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.sub-panel').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    $(`panel${tab.dataset.subtab}`).classList.add('active');
+    state.activeSubTab = tab.dataset.subtab;
+  });
+});
+
+/* ── Window Controls ── */
+$('closeBtn').addEventListener('click', () => {
+  if (window.electronAPI) window.electronAPI.closeWindow();
+  else window.close();
+});
+$('minBtn').addEventListener('click', () => {
+  if (window.electronAPI) window.electronAPI.minimizeWindow();
+});
+
+/* ── Right-click Paste ── */
+document.addEventListener('contextmenu', async (e) => {
+  const input = e.target.closest('input');
+  if (input) {
+    e.preventDefault();
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        input.value = text;
+        input.focus();
+        input.dispatchEvent(new Event('input'));
+      }
+    } catch (_) {}
+  }
+});
+
+/* ── WIZARD ── */
+function wizSelectType(type) {
+  state.wizType = type;
+  document.querySelectorAll('.choice-card').forEach(c => c.classList.remove('selected'));
+  document.querySelector(`.choice-card[data-choice="${type}"]`).classList.add('selected');
+  $('wizStep1Next').disabled = false;
+}
+
+function wizGoTo(step) {
+  const slides = document.querySelectorAll('.wizard-slide');
+  slides.forEach(s => {
+    const sNum = parseInt(s.dataset.step);
+    if (sNum === step) s.classList.add('active');
+    else s.classList.remove('active');
+  });
+}
+
+$('wizUrlInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') wizFetchFormats();
+});
+$('wizUrlInput').addEventListener('input', () => {
+  state.wizUrl = $('wizUrlInput').value.trim();
+});
+$('wizFormatCode').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') wizStartDownload();
+});
+
+async function wizFetchFormats() {
+  const url = $('wizUrlInput').value.trim();
+  if (!url) { showToast('Please enter a YouTube URL', 'error'); return; }
+  state.wizUrl = url;
+
+  $('wizFormatOutput').innerHTML = '<div class="fmt-line fmt-info">Fetching formats...</div>';
+  $('wizStep2Next').disabled = true;
+  wizGoTo(3);
+
+  try {
+    const res = await api('/api/list-formats', { method: 'POST', body: JSON.stringify({ url }) });
+    if (!res || !res.id) {
+      $('wizFormatOutput').innerHTML = '<div class="fmt-line fmt-error">Failed to start format listing</div>';
+      $('wizStep2Next').disabled = false;
+      return;
+    }
+
+    if (dlEventSource) dlEventSource.close();
+
+    let formatOutput = '';
+    let receivedDone = false;
+
+    dlEventSource = new EventSource('/api/download/progress/' + res.id);
+    dlEventSource.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.stage === 'formats') {
+          formatOutput += data.message + '\n';
+          $('wizFormatOutput').innerHTML = formatOutput.split('\n').map(l => {
+            if (l.startsWith('[')) return `<div class="fmt-line fmt-info">${escapeHtml(l)}</div>`;
+            if (l.match(/^\d+/)) return `<div class="fmt-line">${escapeHtml(l)}</div>`;
+            if (l.startsWith('ID') || l.startsWith('--')) return `<div class="fmt-line fmt-header">${escapeHtml(l)}</div>`;
+            return `<div class="fmt-line">${escapeHtml(l)}</div>`;
+          }).join('');
+          $('wizFormatOutput').scrollTop = $('wizFormatOutput').scrollHeight;
+        } else if (data.stage === 'formats_done') {
+          receivedDone = true;
+          state.wizFormats = data.fullOutput || formatOutput;
+          $('wizStep2Next').disabled = false;
+          $('wizFormatCode').focus();
+          cleanupEventSource();
+        } else if (data.stage === 'error') {
+          $('wizFormatOutput').innerHTML += `<div class="fmt-line fmt-error">${escapeHtml(data.message)}</div>`;
+          $('wizStep2Next').disabled = false;
+          cleanupEventSource();
+        }
+      } catch(_) {}
+    };
+    dlEventSource.onerror = () => {
+      if (!receivedDone) {
+        $('wizStep2Next').disabled = false;
+        cleanupEventSource();
+      }
+    };
+  } catch (e) {
+    $('wizFormatOutput').innerHTML = `<div class="fmt-line fmt-error">Error: ${escapeHtml(e.message)}</div>`;
+    $('wizStep2Next').disabled = false;
+  }
+}
+
+function cleanupEventSource() {
+  if (dlEventSource) {
+    try { dlEventSource.close(); } catch(_) {}
+    dlEventSource = null;
+  }
+}
+
+async function wizStartDownload() {
+  const url = state.wizUrl;
+  let formatCode = $('wizFormatCode').value.trim();
+  if (!formatCode) formatCode = 'best';
+  state.wizFormatCode = formatCode;
+
+  if (!url) { showToast('No URL', 'error'); return; }
+
+  const isAudio = state.wizType === 'audio';
+  const payload = { url, mode: state.wizType };
+
+  if (isAudio) {
+    payload.audioOnly = true;
+    payload.formatCode = formatCode;
+  } else {
+    payload.formatCode = formatCode;
+  }
+
+  state.downloading = true;
+  showWizardProgress();
+
+  const res = await api('/api/download', { method: 'POST', body: JSON.stringify(payload) });
+  if (!res || !res.id) {
+    hideWizardProgress();
+    showToast('Failed to start download', 'error');
+    return;
+  }
+  listenWizardProgress(res.id, url);
+}
+
+function showWizardProgress() {
+  const ov = $('wizProgress');
+  ov.classList.add('visible');
+  $('wizProgressTitle').textContent = `${state.wizType === 'audio' ? 'Downloading Audio' : 'Downloading Video'}...`;
+  $('wizProgressBar').style.width = '0%';
+  $('wizProgressDetail').textContent = '';
+  ov.querySelectorAll('.po-step').forEach(s => { s.className = 'po-step'; });
+  const start = ov.querySelector('[data-step="start"]');
+  if (start) start.classList.add('active');
+}
+
+function hideWizardProgress() {
+  $('wizProgress').classList.remove('visible');
+  state.downloading = false;
+}
+
+function listenWizardProgress(id, url) {
+  if (dlEventSource) dlEventSource.close();
+
+  const isPlaylist = url.toLowerCase().includes('list=');
+  const plContainer = $('wizPlaylistProgress');
+  const stepEls = $('wizProgress').querySelectorAll('.po-step');
+
+  dlEventSource = new EventSource('/api/download/progress/' + id);
+  dlEventSource.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      const { stage, message, progress } = data;
+
+      stepEls.forEach(s => {
+        if (s.dataset.step === stage) {
+          stepEls.forEach(x => { if (x.dataset.step !== stage && !x.classList.contains('done') && !x.classList.contains('error')) { x.classList.remove('active'); x.classList.add('done'); } });
+          s.classList.add('active');
+        }
+      });
+
+      if (isPlaylist) {
+        plContainer.classList.add('visible');
+        if (data.item && data.total) {
+          updatePlaylistItem(plContainer, data);
+        }
+        if (stage === 'file_complete' && data.file) {
+          const fname = data.file.split('\\').pop().split('/').pop();
+          addPlaylistItemDone(plContainer, fname);
+        }
+      }
+
+      if (progress !== undefined) $('wizProgressBar').style.width = Math.min(progress, 99) + '%';
+      if (message) $('wizProgressDetail').textContent = message;
+
+      if (stage === 'done') {
+        $('wizProgressBar').style.width = '100%';
+        const doneEl = $('wizProgress').querySelector('[data-step="done"]');
+        if (doneEl) { doneEl.classList.remove('active'); doneEl.classList.add('done'); }
+        setTimeout(() => {
+          showToast('Download complete!', 'success');
+          hideWizardProgress();
+          wizGoTo(1);
+          document.querySelectorAll('.choice-card').forEach(c => c.classList.remove('selected'));
+          $('wizStep1Next').disabled = true;
+          $('wizUrlInput').value = '';
+          $('wizFormatCode').value = '';
+          $('wizFormatOutput').innerHTML = '<div class="fmt-line fmt-info">Fetching available formats...</div>';
+          plContainer.classList.remove('visible');
+          plContainer.innerHTML = '';
+          loadDlHistory();
+        }, 1500);
+      } else if (stage === 'error') {
+        const errEl = $('wizProgress').querySelector('[data-step="error"]');
+        if (!errEl) {
+          const steps = $('wizProgressSteps');
+          steps.innerHTML += `<div class="po-step error"><span class="psi"><i class="fas fa-times"></i></span> Error</div>`;
+        }
+        setTimeout(() => {
+          showToast(data.message || 'Download failed', 'error');
+          hideWizardProgress();
+          wizGoTo(3);
+        }, 1500);
+      }
+    } catch(_) {}
+  };
+  dlEventSource.onerror = () => {
+    cleanupEventSource();
+    if (state.downloading) {
+      setTimeout(hideWizardProgress, 1000);
+    }
+  };
+}
+
+function updatePlaylistItem(container, data) {
+  let item = container.querySelector(`.pl-item[data-item="${data.item}"]`);
+  if (!item) {
+    item = document.createElement('div');
+    item.className = 'pl-item downloading';
+    item.dataset.item = data.item;
+    item.style.animationDelay = (data.item * 0.05) + 's';
+    item.innerHTML = `<div class="pli-num">${data.item}</div>
+      <div class="pli-title">Item ${data.item} of ${data.total}</div>
+      <div class="pli-bar"><div class="fill"></div></div>
+      <div class="pli-status">${data.progress ? Math.round(data.progress) + '%' : '0%'}</div>`;
+    container.appendChild(item);
+  }
+  const fill = item.querySelector('.fill');
+  const status = item.querySelector('.pli-status');
+  if (fill && data.progress !== undefined) fill.style.width = Math.min(data.progress, 100) + '%';
+  if (status && data.progress !== undefined) status.textContent = Math.round(data.progress) + '%';
+  if (data.speed) item.querySelector('.pli-title').textContent = `Item ${data.item} - ${data.speed}`;
+}
+
+function addPlaylistItemDone(container, fname) {
+  const items = container.querySelectorAll('.pl-item');
+  const lastItem = items[items.length - 1];
+  if (lastItem) {
+    lastItem.classList.remove('downloading');
+    lastItem.classList.add('done');
+    lastItem.querySelector('.pli-bar .fill').style.width = '100%';
+    lastItem.querySelector('.pli-status').textContent = '✓';
+    lastItem.querySelector('.pli-title').textContent = fname.length > 30 ? fname.substring(0, 27) + '...' : fname;
+  }
+}
+
+/* ── POPULAR DOWNLOAD ── */
+document.querySelectorAll('.popularDlBtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const panel = btn.closest('.sub-panel');
+    const input = panel.querySelector('.popularUrlInput');
+    const url = input.value.trim();
+    const format = btn.dataset.format;
+    if (!url) { showToast('Please enter a YouTube URL', 'error'); return; }
+    startPopularDownload(url, format);
+  });
+});
+
+document.querySelectorAll('.popularUrlInput').forEach(input => {
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const btn = input.closest('.sub-panel').querySelector('.popularDlBtn');
+      if (btn) btn.click();
+    }
+  });
+});
+
+async function startPopularDownload(url, format) {
+  state.downloading = true;
+  const isAudio = format === 'mp3';
+  const isPlaylist = url.toLowerCase().includes('list=');
+
+  const ov = $('popularProgress');
+  ov.classList.add('visible');
+  $('popularProgressTitle').textContent = `Downloading ${format.toUpperCase()}...`;
+  $('popularProgressBar').style.width = '0%';
+  $('popularProgressDetail').textContent = '';
+  ov.querySelectorAll('.po-step').forEach(s => { s.className = 'po-step'; });
+  ov.querySelector('[data-step="start"]')?.classList.add('active');
+
+  const payload = { url, format, audioOnly: isAudio };
+  const endpoint = isPlaylist ? '/api/download-playlist' : '/api/download';
+
+  const res = await api(endpoint, { method: 'POST', body: JSON.stringify(payload) });
+  if (!res || !res.id) {
+    ov.classList.remove('visible');
+    state.downloading = false;
+    showToast('Failed to start download', 'error');
+    return;
+  }
+
+  if (dlEventSource) dlEventSource.close();
+  const plContainer = $('popularPlaylistProgress');
+  const stepEls = ov.querySelectorAll('.po-step');
+
+  dlEventSource = new EventSource('/api/download/progress/' + res.id);
+  dlEventSource.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+
+      stepEls.forEach(s => {
+        if (s.dataset.step === data.stage) {
+          stepEls.forEach(x => { if (x.dataset.step !== data.stage && !x.classList.contains('done') && !x.classList.contains('error')) { x.classList.remove('active'); x.classList.add('done'); } });
+          s.classList.add('active');
+        }
+      });
+
+      if (isPlaylist) {
+        plContainer.classList.add('visible');
+        if (data.item && data.total) updatePlaylistItem(plContainer, data);
+        if (data.stage === 'file_complete' && data.file) {
+          const fname = data.file.split('\\').pop().split('/').pop();
+          addPlaylistItemDone(plContainer, fname);
+        }
+      }
+
+      if (data.progress !== undefined) $('popularProgressBar').style.width = Math.min(data.progress, 99) + '%';
+      if (data.message) $('popularProgressDetail').textContent = data.message;
+
+      if (data.stage === 'done') {
+        $('popularProgressBar').style.width = '100%';
+        const doneEl = ov.querySelector('[data-step="done"]');
+        if (doneEl) { doneEl.classList.remove('active'); doneEl.classList.add('done'); }
+        setTimeout(() => {
+          showToast('Download complete!', 'success');
+          ov.classList.remove('visible');
+          plContainer.classList.remove('visible');
+          plContainer.innerHTML = '';
+          state.downloading = false;
+          document.querySelectorAll('.popularUrlInput').forEach(i => i.value = '');
+          loadDlHistory();
+        }, 1500);
+      } else if (data.stage === 'error') {
+        setTimeout(() => {
+          showToast(data.message || 'Download failed', 'error');
+          ov.classList.remove('visible');
+          state.downloading = false;
+        }, 1500);
+      }
+    } catch(_) {}
+  };
+  dlEventSource.onerror = () => {
+    cleanupEventSource();
+    if (state.downloading) {
+      ov.classList.remove('visible');
+      state.downloading = false;
+    }
+  };
+}
+
+/* ── yt-dlp Status & Download ── */
+async function checkYtdlpStatus() {
+  const res = await api('/api/ytdlp-status');
+  const banner = $('ytdlpBanner');
+  const statusText = $('ytdlpStatusText');
+  if (res && res.exists) {
+    banner.style.display = 'none';
+    statusText.innerHTML = `<i class="fas fa-check-circle" style="color:var(--green)"></i> yt-dlp v${res.version || 'installed'}`;
+  } else {
+    banner.style.display = 'flex';
+    statusText.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:var(--yellow)"></i> yt-dlp not found. Download it first.`;
+  }
+}
+
+$('downloadYtdlpBtn').addEventListener('click', async () => {
+  const btn = $('downloadYtdlpBtn');
+  btn.disabled = true;
+  btn.textContent = 'Downloading...';
+  $('ydlpbannerText').textContent = 'Downloading yt-dlp.exe...';
+
+  const overlay = $('updateOverlay');
+  overlay.classList.add('visible');
+  $('updateTitle').textContent = 'Downloading yt-dlp';
+  $('updateStatus').textContent = 'Starting download...';
+  $('updateBarFill').style.width = '0%';
+
+  const res = await api('/api/download-ytdlp', { method: 'POST' });
+  if (!res || !res.id) {
+    overlay.classList.remove('visible');
+    btn.disabled = false;
+    btn.textContent = 'Download';
+    showToast('Failed to start download', 'error');
+    return;
+  }
+
+  if (dlEventSource) dlEventSource.close();
+  dlEventSource = new EventSource('/api/download/progress/' + res.id);
+  dlEventSource.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.message) $('updateStatus').textContent = data.message;
+      if (data.progress !== undefined) $('updateBarFill').style.width = Math.min(data.progress, 99) + '%';
+      if (data.stage === 'done') {
+        $('updateBarFill').style.width = '100%';
+        $('updateStatus').textContent = 'Download complete!';
+        setTimeout(() => {
+          overlay.classList.remove('visible');
+          btn.disabled = false;
+          btn.textContent = 'Download';
+          checkYtdlpStatus();
+          showToast('yt-dlp downloaded!', 'success');
+        }, 1500);
+      } else if (data.stage === 'error') {
+        overlay.classList.remove('visible');
+        btn.disabled = false;
+        btn.textContent = 'Download';
+        showToast(data.message || 'Download failed', 'error');
+      }
+    } catch(_) {}
+  };
+  dlEventSource.onerror = () => {
+    cleanupEventSource();
+    overlay.classList.remove('visible');
+    btn.disabled = false;
+    btn.textContent = 'Download';
+  };
+});
+
+/* ── Settings ── */
+$('settingsBtn').addEventListener('click', () => { $('settingsModal').classList.add('open'); loadSettingsUI(); });
+$('closeSettings').addEventListener('click', () => $('settingsModal').classList.remove('open'));
+$('settingsModal').addEventListener('click', (e) => {
+  if (e.target === $('settingsModal')) $('settingsModal').classList.remove('open');
+});
+
+async function loadSettingsUI() {
+  const dlHistory = await api('/api/downloads');
+  renderDlHistory(dlHistory || []);
+  const settings = await api('/api/settings');
+  if (settings && settings.downloadPath) $('downloadPath').value = settings.downloadPath;
+  else $('downloadPath').value = 'downloads/';
+  checkYtdlpStatus();
+}
+
+function renderDlHistory(list) {
+  const container = $('dlHistoryList');
+  if (!list || !list.length) {
+    container.innerHTML = '<div class="empty-state"><i class="fas fa-download"></i><p>No downloads yet</p></div>';
+    return;
+  }
+  container.innerHTML = list.map(d => `
+    <div class="dl-item">
+      <i class="fas fa-file-video" style="color:var(--accent)"></i>
+      <span class="dli-name" title="${d.name}">${d.name || 'Unknown'}</span>
+      <span style="font-size:10px;color:var(--text3);flex-shrink:0">${d.downloadedAt ? new Date(d.downloadedAt).toLocaleDateString() : ''}</span>
+      <div class="dli-actions">
+        <button class="dli-btn rm" data-id="${d.id}" title="Remove"><i class="fas fa-times"></i></button>
+      </div>
+    </div>
+  `).join('');
+  container.querySelectorAll('.dli-btn.rm').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await api('/api/downloads/remove', { method: 'POST', body: JSON.stringify({ id: btn.dataset.id }) });
+      loadDlHistory();
+    });
+  });
+}
+
+async function loadDlHistory() {
+  const dlHistory = await api('/api/downloads');
+  renderDlHistory(dlHistory || []);
+}
+
+$('clearDlBtn').addEventListener('click', async () => {
+  await api('/api/downloads/clear', { method: 'POST' });
+  loadDlHistory();
+  showToast('History cleared');
+});
+
+$('browsePath').addEventListener('click', async () => {
+  let folder = null;
+  if (window.electronAPI) folder = await window.electronAPI.selectFolder();
+  else folder = prompt('Enter download folder path:');
+  if (folder) {
+    await api('/api/settings', { method: 'POST', body: JSON.stringify({ downloadPath: folder }) });
+    $('downloadPath').value = folder;
+    showToast('Download path updated');
+  }
+});
+
+$('updateYtdlpBtn').addEventListener('click', async () => {
+  const btn = $('updateYtdlpBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Updating...';
+  $('settingsModal').classList.remove('open');
+
+  const overlay = $('updateOverlay');
+  overlay.classList.add('visible');
+  $('updateTitle').textContent = 'Updating yt-dlp';
+  $('updateStatus').textContent = 'Starting update...';
+  $('updateBarFill').style.width = '0%';
+
+  const res = await api('/api/update-ytdlp', { method: 'POST' });
+  if (!res || !res.id) {
+    overlay.classList.remove('visible');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sync-alt"></i> Update Now';
+    showToast('Failed to start update', 'error');
+    return;
+  }
+
+  if (dlEventSource) dlEventSource.close();
+  dlEventSource = new EventSource('/api/download/progress/' + res.id);
+  dlEventSource.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.message) $('updateStatus').textContent = data.message;
+      if (data.progress !== undefined) $('updateBarFill').style.width = Math.min(data.progress, 99) + '%';
+      if (data.stage === 'done') {
+        $('updateBarFill').style.width = '100%';
+        $('updateStatus').textContent = 'yt-dlp updated!';
+        setTimeout(() => {
+          overlay.classList.remove('visible');
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-sync-alt"></i> Update Now';
+          checkYtdlpStatus();
+          showToast('yt-dlp updated!', 'success');
+        }, 1500);
+      } else if (data.stage === 'error') {
+        overlay.classList.remove('visible');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sync-alt"></i> Update Now';
+        showToast(data.message || 'Update failed', 'error');
+      }
+    } catch(_) {}
+  };
+  dlEventSource.onerror = () => {
+    cleanupEventSource();
+    overlay.classList.remove('visible');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sync-alt"></i> Update Now';
+  };
+});
+
+$('folderBtn').addEventListener('click', async () => {
+  await api('/api/open-folder', { method: 'POST' });
+});
+
+/* ── Utils ── */
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/* ── Init ── */
+(async function init() {
+  api('/api/version').then(r => {
+    if (r && r.version) $('versionLabel').textContent = 'v' + r.version;
+  });
+  await checkYtdlpStatus();
+  loadDlHistory();
+})();
+</script>
+</body>
+</html>
