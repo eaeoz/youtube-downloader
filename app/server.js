@@ -578,17 +578,12 @@ app.post('/api/cancel/:id', (req, res) => {
   if (proc) {
     try {
       if (process.platform === 'win32') {
-        spawn('taskkill', ['/f', '/t', '/pid', String(proc.pid)], { windowsHide: true });
+        execSync(`taskkill /f /t /pid ${proc.pid}`, { windowsHide: true, stdio: 'ignore' });
       } else {
         proc.kill('SIGTERM');
       }
     } catch (_) {}
     delete downloadProcs[id];
-  }
-  const emitter = downloadEmitters[id];
-  if (emitter) {
-    emitter.emit('progress', { stage: 'cancelled', message: 'Download cancelled' });
-    setTimeout(() => delete downloadEmitters[id], 2000);
   }
   const dlDir = getDownloadsDir();
   try {
@@ -600,17 +595,25 @@ app.post('/api/cancel/:id', (req, res) => {
         else fs.unlinkSync(fullPath);
       }
     }
-    const subdirs = entries.filter(e => e.isDirectory());
-    for (const sub of subdirs) {
-      const subPath = path.join(dlDir, sub.name);
-      try {
-        const subFiles = fs.readdirSync(subPath);
-        for (const f of subFiles) {
-          if (f.includes(id)) fs.unlinkSync(path.join(subPath, f));
-        }
-      } catch (_) {}
-    }
   } catch (_) {}
+  try {
+    const walkForPart = (dir) => {
+      let found = false;
+      const items = fs.readdirSync(dir, { withFileTypes: true });
+      for (const item of items) {
+        const full = path.join(dir, item.name);
+        if (item.isDirectory()) { if (walkForPart(full)) found = true; }
+        else if (item.name.endsWith('.part') || item.name.endsWith('.temp')) { fs.unlinkSync(full); found = true; }
+      }
+      return found;
+    };
+    walkForPart(dlDir);
+  } catch (_) {}
+  const emitter = downloadEmitters[id];
+  if (emitter) {
+    emitter.emit('progress', { stage: 'cancelled', message: 'Download cancelled' });
+    setTimeout(() => delete downloadEmitters[id], 2000);
+  }
   res.json({ ok: true, message: 'Cancelled' });
 });
 
