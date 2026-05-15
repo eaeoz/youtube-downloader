@@ -269,6 +269,20 @@ body{
   line-height:1.5;
 }
 
+/* Wizard warning */
+.wizard-warning{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 14px;
+  margin:8px 0;
+  border-radius:var(--radius);
+  background:rgba(251,191,36,0.15);
+  border:1px solid rgba(251,191,36,0.4);
+  color:var(--amber, #f59e0b);
+  font-size:13px;
+  line-height:1.4;
+}
+.wizard-warning i{font-size:14px;flex-shrink:0}
+
 /* Wizard choice cards */
 .choice-grid{
   display:flex;gap:12px;
@@ -662,8 +676,8 @@ body{
 </div>
 
 <div class="main-tab-bar">
+   <button class="main-tab" data-tab="popular"><i class="fas fa-fire"></i> Popular</button>
   <button class="main-tab active" data-tab="wizard"><i class="fas fa-wand-magic-sparkles"></i> Wizard</button>
-  <button class="main-tab" data-tab="popular"><i class="fas fa-fire"></i> Popular</button>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════ -->
@@ -683,6 +697,7 @@ body{
       <div class="wizard-slide active" data-step="1">
         <div class="ws-title"><i class="fas fa-question-circle"></i> What do you want to download?</div>
         <div class="ws-desc">Choose the type of media you want to download from YouTube.</div>
+        <div class="wizard-warning"><i class="fas fa-exclamation-triangle"></i> Only single file can be downloaded, playlist will be ignored</div>
         <div class="choice-grid">
           <div class="choice-card" data-choice="video" onclick="wizSelectType('video')">
             <div class="cc-icon">&#127916;</div>
