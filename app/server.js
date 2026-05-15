@@ -218,7 +218,9 @@ app.post('/api/info', async (req, res) => {
           vcodec: f.vcodec || 'none',
           acodec: f.acodec || 'none',
           height: f.height || 0,
-          fps: f.fps || ''
+          fps: f.fps || '',
+          tbr: f.tbr || 0,
+          abr: f.abr || 0
         })).filter(f => f.vcodec !== 'none' || f.acodec !== 'none')
       });
     }
@@ -258,7 +260,8 @@ app.post('/api/list-formats', async (req, res) => {
         for (const line of lines) {
           emitter.emit('progress', { stage: 'formats', message: line });
         }
-        emitter.emit('progress', { stage: 'formats_done', message: 'Format listing complete', fullOutput });
+        const fmtData = parseAudioBitrates(fullOutput);
+        emitter.emit('progress', { stage: 'formats_done', message: 'Format listing complete', fullOutput, fmtData });
       });
 
       proc.on('error', (e) => {
@@ -270,8 +273,44 @@ app.post('/api/list-formats', async (req, res) => {
   });
 });
 
+function parseAudioBitrates(rawOutput) {
+  const lines = rawOutput.split('\n');
+  let bestId = null, bestBitrate = -1;
+  const fmtMap = {};
+
+  for (const line of lines) {
+    const idMatch = line.match(/^\s*(\d+)\s/);
+    if (!idMatch) continue;
+    if (!line.includes('audio only')) continue;
+
+    const fmtId = idMatch[1];
+    let tbr = -1;
+
+    const brMatch = line.match(/(\d+(?:\.\d+)?)\s*(k|K)\s+(?:https?|m3u8|dash)/);
+    if (brMatch) {
+      tbr = parseFloat(brMatch[1]);
+    } else {
+      const mbrMatch = line.match(/(\d+(?:\.\d+)?)\s*M\s+(?:https?|m3u8|dash)/);
+      if (mbrMatch) tbr = parseFloat(mbrMatch[1]) * 1000;
+    }
+
+    if (tbr > 0) fmtMap[fmtId] = tbr;
+    if (tbr > bestBitrate) { bestBitrate = tbr; bestId = fmtId; }
+  }
+
+  let mp3Bitrate = 320;
+  if (bestBitrate > 0) {
+    if (bestBitrate < 160) mp3Bitrate = 128;
+    else if (bestBitrate < 224) mp3Bitrate = 192;
+    else if (bestBitrate < 288) mp3Bitrate = 256;
+    else mp3Bitrate = 320;
+  }
+
+  return { bestId, bestBitrate, mp3Bitrate, fmtMap };
+}
+
 app.post('/api/download', async (req, res) => {
-  const { url, format, mode, audioOnly, formatCode } = req.body;
+  const { url, format, mode, audioOnly, formatCode, audioBitrate } = req.body;
   if (!url) return res.status(400).json({ error: 'URL required' });
 
   const isPlaylist_ = isPlaylist(url);
@@ -287,6 +326,7 @@ app.post('/api/download', async (req, res) => {
       const ffmpegPath = FFMPEG_DIR;
       const dlDir = getDownloadsDir();
       const isAudio = audioOnly || mode === 'audio' || format === 'mp3';
+      const ab = parseInt(audioBitrate) || 0;
 
       const baseArgs = [
         '--ffmpeg-location', ffmpegPath,
@@ -300,7 +340,7 @@ app.post('/api/download', async (req, res) => {
       if (formatCode && formatCode !== 'best') {
         if (isAudio) {
           baseArgs.push('-f', formatCode);
-          baseArgs.push('-x', '--audio-format', 'mp3');
+          baseArgs.push('-x', '--audio-format', 'mp3', '--audio-quality', ab > 0 ? ab + 'k' : '0');
         } else {
           baseArgs.push('-f', formatCode, '--merge-output-format', 'mp4');
         }
@@ -309,7 +349,7 @@ app.post('/api/download', async (req, res) => {
       } else if (format === '720p') {
         baseArgs.push('-f', 'bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]', '--merge-output-format', 'mp4');
       } else if (isAudio) {
-        baseArgs.push('-x', '--audio-format', 'mp3', '--audio-quality', '0');
+        baseArgs.push('-x', '--audio-format', 'mp3', '--audio-quality', ab > 0 ? ab + 'k' : '0');
       } else {
         baseArgs.push('-f', 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]', '--merge-output-format', 'mp4');
       }

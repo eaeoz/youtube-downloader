@@ -382,6 +382,16 @@ body{
 }
 .fmt-row input:focus{border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-glow)}
 .fmt-row input::placeholder{color:var(--text3)}
+.fmt-row select{
+  padding:9px 6px;
+  border-radius:var(--radius-sm);
+  border:2px solid var(--border);
+  background:var(--bg2);
+  color:var(--text);
+  font-size:13px;outline:none;
+  cursor:pointer;font-family:inherit;
+}
+.fmt-row select:focus{border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-glow)}
 
 /* ── Progress Overlay ── */
 .progress-overlay{
@@ -711,6 +721,13 @@ body{
         </div>
         <div class="fmt-row">
           <input class="wizard-input" id="wizFormatCode" type="text" placeholder='Format code, or "best" for best quality'>
+          <select class="wizard-select" id="wizBitrateSelect">
+            <option value="auto">Auto</option>
+            <option value="128">128k</option>
+            <option value="192">192k</option>
+            <option value="256">256k</option>
+            <option value="320">320k</option>
+          </select>
           <span style="font-size:11px;color:var(--text3);white-space:nowrap" id="wizFmtHint">&nbsp;</span>
         </div>
         <div class="wizard-btns">
@@ -861,6 +878,9 @@ const state = {
   wizUrl: '',
   wizFormats: '',
   wizFormatCode: '',
+  bestAudioFmt: null,
+  bestAudioBitrate: 320,
+  audioFmtMap: {},
   downloading: false,
   currentDlId: null,
   theme: 'dark',
@@ -1001,8 +1021,25 @@ $('wizUrlInput').addEventListener('keydown', (e) => {
 $('wizUrlInput').addEventListener('input', () => {
   state.wizUrl = $('wizUrlInput').value.trim();
 });
+function updateWizBitrateHint() {
+  const fmt = $('wizFormatCode').value.trim();
+  if (!fmt || fmt === 'best') return;
+  const srcKbps = state.audioFmtMap[fmt];
+  if (!srcKbps) return;
+  const calcBitrate = mp3BitrateForSource(srcKbps);
+  const override = parseInt($('wizBitrateSelect').value);
+  const mp3Bitrate = override > 0 ? override : calcBitrate;
+  const suffix = override > 0 ? ' [override]' : '';
+  $('wizFmtHint').textContent = `${fmt} (${srcKbps}k) → MP3 ${mp3Bitrate}k${suffix}`;
+}
+
+$('wizBitrateSelect').addEventListener('change', updateWizBitrateHint);
+
 $('wizFormatCode').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') wizStartDownload();
+});
+$('wizFormatCode').addEventListener('input', () => {
+  if (state.wizType === 'audio') updateWizBitrateHint();
 });
 $('wizFormatOutput').addEventListener('click', (e) => {
   const line = e.target.closest('.clickable');
@@ -1014,7 +1051,43 @@ $('wizFormatOutput').addEventListener('click', (e) => {
     fmt = fmt + '+bestaudio';
   }
   $('wizFormatCode').value = fmt;
+  if (state.wizType === 'audio') updateWizBitrateHint();
 });
+
+async function fetchAudioBitratesFromJson() {
+  const url = state.wizUrl;
+  if (!url) return;
+  try {
+    const res = await api('/api/info', { method: 'POST', body: JSON.stringify({ url }) });
+    if (!res || !res.formats) return;
+    const fmtMap = {};
+    let bestId = null, bestBitrate = -1;
+    for (const f of res.formats) {
+      const isAudio = f.vcodec === 'none' && f.acodec && f.acodec !== 'none';
+      if (!isAudio) continue;
+      const tbr = f.abr || f.tbr || 0;
+      if (tbr > 0) {
+        fmtMap[f.format_id] = Math.round(tbr);
+        if (tbr > bestBitrate) { bestBitrate = tbr; bestId = f.format_id; }
+      }
+    }
+    if (!bestId) return;
+    let mp3Bitrate = 320;
+    if (bestBitrate < 160) mp3Bitrate = 128;
+    else if (bestBitrate < 224) mp3Bitrate = 192;
+    else if (bestBitrate < 288) mp3Bitrate = 256;
+    state.bestAudioFmt = bestId;
+    state.bestAudioBitrate = mp3Bitrate;
+    state.audioFmtMap = fmtMap;
+    if (state.wizType === 'audio' && bestId) {
+      const currentVal = $('wizFormatCode').value.trim();
+      if (!currentVal || currentVal === 'best') {
+        $('wizFormatCode').value = bestId;
+      }
+      updateWizBitrateHint();
+    }
+  } catch (_) {}
+}
 
 async function wizFetchFormats() {
   const url = $('wizUrlInput').value.trim();
@@ -1022,14 +1095,18 @@ async function wizFetchFormats() {
   state.wizUrl = url;
 
   const isAudioMode = state.wizType === 'audio';
+  const brSelect = $('wizBitrateSelect');
   if (isAudioMode) {
-    $('wizStep3Desc').textContent = 'Audio formats shown below. Click any to use it, or leave "best" for best quality.';
+    $('wizStep3Desc').textContent = 'Audio formats shown below. Click any to use it, or choose an MP3 bitrate.';
     $('wizFormatCode').placeholder = 'Format code, or "best" for best quality';
     $('wizFmtHint').textContent = 'Auto-converted to MP3';
+    brSelect.style.display = '';
+    brSelect.value = 'auto';
   } else {
     $('wizStep3Desc').textContent = 'Video formats shown below. Click any to auto-merge best audio, or enter a custom code.';
     $('wizFormatCode').placeholder = 'Format code, or "best" for best quality';
     $('wizFmtHint').textContent = 'Audio merged automatically';
+    brSelect.style.display = 'none';
   }
 
   $('wizFormatOutput').innerHTML = '<div class="fmt-loading"><div class="spinner"></div> Fetching available formats...</div>';
@@ -1072,9 +1149,22 @@ async function wizFetchFormats() {
         } else if (data.stage === 'formats_done') {
           receivedDone = true;
           state.wizFormats = data.fullOutput || formatOutput;
+          let result = data.fmtData || null;
+          if (!result) {
+            result = findBestAudioFormat(state.wizFormats);
+          }
+          state.bestAudioFmt = result.bestId;
+          state.bestAudioBitrate = result.mp3Bitrate;
+          state.audioFmtMap = result.fmtMap;
+          if (state.wizType === 'audio' && result.bestId) {
+            $('wizFormatCode').value = result.bestId;
+            updateWizBitrateHint();
+          }
           $('wizStep2Next').disabled = false;
           $('wizFormatCode').focus();
           cleanupEventSource();
+
+          fetchAudioBitratesFromJson();
         } else if (data.stage === 'error') {
           $('wizFormatOutput').innerHTML += `<div class="fmt-line fmt-error">${escapeHtml(data.message)}</div>`;
           $('wizStep2Next').disabled = false;
@@ -1129,6 +1219,13 @@ async function wizStartDownload() {
   if (isAudio) {
     payload.audioOnly = true;
     payload.formatCode = formatCode;
+    const override = parseInt($('wizBitrateSelect').value);
+    if (override > 0) {
+      payload.audioBitrate = override;
+    } else {
+      const srcKbps = state.audioFmtMap[formatCode];
+      payload.audioBitrate = srcKbps ? mp3BitrateForSource(srcKbps) : state.bestAudioBitrate;
+    }
   } else {
     payload.formatCode = formatCode;
   }
@@ -1670,6 +1767,54 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+/* ── Audio Format Parser ── */
+function mp3BitrateForSource(sourceKbps) {
+  if (sourceKbps < 160) return 128;
+  if (sourceKbps < 224) return 192;
+  if (sourceKbps < 288) return 256;
+  return 320;
+}
+
+function findBestAudioFormat(formatOutput) {
+  const lines = formatOutput.split('\n');
+  let bestId = null;
+  let bestBitrate = -1;
+  const fmtMap = {};
+
+  for (const line of lines) {
+    if (!line.match(/^\s*\d+/)) continue;
+    if (!line.includes('audio only')) continue;
+
+    const id = line.match(/^\s*(\S+)/);
+    if (!id) continue;
+    const fmtId = id[1];
+
+    const cols = line.trim().split(/\s+/);
+    let tbr = -1;
+    for (let i = 2; i < cols.length; i++) {
+      if (/^[a-z][a-z0-9_]*$/.test(cols[i]) && /[\d.]/.test(cols[i - 1])) {
+        const tbrStr = cols[i - 1];
+        const k = tbrStr.match(/([\d.]+)\s*k/i);
+        const m = tbrStr.match(/([\d.]+)\s*M/i);
+        if (k) tbr = parseFloat(k[1]);
+        else if (m) tbr = parseFloat(m[1]) * 1000;
+        else if (/^\d/.test(tbrStr)) tbr = parseFloat(tbrStr);
+        break;
+      }
+    }
+
+    if (tbr > 0) fmtMap[fmtId] = tbr;
+
+    if (tbr > bestBitrate) {
+      bestBitrate = tbr;
+      bestId = fmtId;
+    }
+  }
+
+  const mp3Bitrate = bestBitrate > 0 ? mp3BitrateForSource(bestBitrate) : 320;
+  return { bestId, bestBitrate, mp3Bitrate, fmtMap };
 }
 
 /* ── Init ── */
