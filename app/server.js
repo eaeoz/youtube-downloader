@@ -597,17 +597,20 @@ app.post('/api/cancel/:id', (req, res) => {
     }
   } catch (_) {}
   try {
-    const walkForPart = (dir) => {
-      let found = false;
-      const items = fs.readdirSync(dir, { withFileTypes: true });
-      for (const item of items) {
-        const full = path.join(dir, item.name);
-        if (item.isDirectory()) { if (walkForPart(full)) found = true; }
-        else if (item.name.endsWith('.part') || item.name.endsWith('.temp')) { fs.unlinkSync(full); found = true; }
-      }
-      return found;
+    const walkTemp = (dir) => {
+      try {
+        const items = fs.readdirSync(dir, { withFileTypes: true });
+        for (const item of items) {
+          const full = path.join(dir, item.name);
+          if (item.isDirectory()) { walkTemp(full); continue; }
+          const lower = item.name.toLowerCase();
+          if (lower.endsWith('.part') || lower.endsWith('.temp') || lower.endsWith('.ytdl') || lower.endsWith('.m4a') || lower.endsWith('.webm')) {
+            try { fs.unlinkSync(full); } catch (_) {}
+          }
+        }
+      } catch (_) {}
     };
-    walkForPart(dlDir);
+    walkTemp(dlDir);
   } catch (_) {}
   const emitter = downloadEmitters[id];
   if (emitter) {
