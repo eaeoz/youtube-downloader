@@ -456,6 +456,7 @@ app.post('/api/download-playlist', async (req, res) => {
       emitter.emit('progress', { stage: 'playlist_start', message: 'Starting playlist download...' });
 
       const proc = spawn(ytPath, baseArgs, { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+      downloadProcs[id] = proc;
       let stderr = '';
       let lastItemInfo = {};
 
@@ -514,6 +515,7 @@ app.post('/api/download-playlist', async (req, res) => {
       });
 
       proc.on('close', (code) => {
+        delete downloadProcs[id];
         if (code === 0) {
           emitter.emit('progress', { stage: 'done', message: 'Playlist download complete!', progress: 100 });
         } else {
@@ -523,6 +525,7 @@ app.post('/api/download-playlist', async (req, res) => {
       });
 
       proc.on('error', (e) => {
+        delete downloadProcs[id];
         emitter.emit('progress', { stage: 'error', message: e.message });
         setTimeout(() => delete downloadEmitters[id], 5000);
       });
@@ -573,10 +576,20 @@ app.post('/api/cancel/:id', (req, res) => {
   const { id } = req.params;
   const proc = downloadProcs[id];
   if (proc) {
-    try { proc.kill('SIGTERM'); } catch (_) {}
+    try {
+      if (process.platform === 'win32') {
+        spawn('taskkill', ['/f', '/t', '/pid', String(proc.pid)], { windowsHide: true });
+      } else {
+        proc.kill('SIGTERM');
+      }
+    } catch (_) {}
     delete downloadProcs[id];
   }
-  delete downloadEmitters[id];
+  const emitter = downloadEmitters[id];
+  if (emitter) {
+    emitter.emit('progress', { stage: 'cancelled', message: 'Download cancelled' });
+    setTimeout(() => delete downloadEmitters[id], 2000);
+  }
   const dlDir = getDownloadsDir();
   try {
     const entries = fs.readdirSync(dlDir, { withFileTypes: true });
