@@ -399,6 +399,13 @@ body{
 .progress-overlay .po-step.active{border-color:var(--primary);color:var(--text);background:rgba(239,68,68,0.08)}
 .progress-overlay .po-step.done{border-color:var(--green);color:var(--green);background:rgba(16,185,129,0.08)}
 .progress-overlay .po-step.error{border-color:var(--red);color:var(--red);background:rgba(239,68,68,0.08)}
+.progress-overlay .po-speed{font-weight:400;color:var(--accent);margin-left:4px;font-size:11px}
+.progress-overlay .po-size{
+  font-size:11px;color:var(--text3);text-align:center;
+  font-variant-numeric:tabular-nums;
+  min-height:16px;
+  animation:fadeIn 0.3s ease;
+}
 .progress-overlay .po-bar{
   width:100%;max-width:420px;height:4px;
   background:var(--border);border-radius:2px;overflow:hidden;
@@ -702,12 +709,11 @@ body{
       <div class="po-title" id="wizProgressTitle">Downloading...</div>
       <div class="po-bar"><div class="fill" id="wizProgressBar"></div></div>
       <div class="po-steps" id="wizProgressSteps">
-        <div class="po-step" data-step="start"><span class="psi"><i class="fas fa-play"></i></span> Starting download...</div>
-        <div class="po-step" data-step="download"><span class="psi"><i class="fas fa-download"></i></span> Downloading media...</div>
-        <div class="po-step" data-step="extract"><span class="psi"><i class="fas fa-file-audio"></i></span> Extracting audio...</div>
-        <div class="po-step" data-step="merge"><span class="psi"><i class="fas fa-object-group"></i></span> Merging video & audio...</div>
-        <div class="po-step" data-step="done"><span class="psi"><i class="fas fa-check-circle"></i></span> Complete!</div>
+        <div class="po-step" data-step="start" data-order="0"><span class="psi"><i class="fas fa-play"></i></span> Starting...</div>
+        <div class="po-step" data-step="download" data-order="1"><span class="psi"><i class="fas fa-download"></i></span> Downloading <span id="wizDlSpeed" class="po-speed"></span></div>
+        <div class="po-step" data-step="done" data-order="2"><span class="psi"><i class="fas fa-check-circle"></i></span> Complete!</div>
       </div>
+      <div class="po-size" id="wizDlSize"></div>
       <div class="pl-progress" id="wizPlaylistProgress"></div>
       <div class="po-detail" id="wizProgressDetail"></div>
     </div>
@@ -772,10 +778,11 @@ body{
     <div class="po-title" id="popularProgressTitle">Downloading...</div>
     <div class="po-bar"><div class="fill" id="popularProgressBar"></div></div>
     <div class="po-steps" id="popularProgressSteps">
-      <div class="po-step" data-step="start"><span class="psi"><i class="fas fa-play"></i></span> Starting download...</div>
-      <div class="po-step" data-step="download"><span class="psi"><i class="fas fa-download"></i></span> Downloading media...</div>
-      <div class="po-step" data-step="done"><span class="psi"><i class="fas fa-check-circle"></i></span> Complete!</div>
+      <div class="po-step" data-step="start" data-order="0"><span class="psi"><i class="fas fa-play"></i></span> Starting...</div>
+      <div class="po-step" data-step="download" data-order="1"><span class="psi"><i class="fas fa-download"></i></span> Downloading <span id="popularDlSpeed" class="po-speed"></span></div>
+      <div class="po-step" data-step="done" data-order="2"><span class="psi"><i class="fas fa-check-circle"></i></span> Complete!</div>
     </div>
+    <div class="po-size" id="popularDlSize"></div>
     <div class="pl-progress" id="popularPlaylistProgress"></div>
     <div class="po-detail" id="popularProgressDetail"></div>
   </div>
@@ -1059,7 +1066,23 @@ function listenWizardProgress(id, url) {
 
   const isPlaylist = url.toLowerCase().includes('list=');
   const plContainer = $('wizPlaylistProgress');
-  const stepEls = $('wizProgress').querySelectorAll('.po-step');
+  const stepEls = Array.from($('wizProgress').querySelectorAll('.po-step')).sort((a, b) => parseInt(a.dataset.order || 99) - parseInt(b.dataset.order || 99));
+
+  function activateStep(stageName) {
+    const target = stepEls.find(s => s.dataset.step === stageName);
+    if (!target) return;
+    const targetOrder = parseInt(target.dataset.order || 99);
+    stepEls.forEach(s => {
+      const sOrder = parseInt(s.dataset.order || 99);
+      if (sOrder < targetOrder) {
+        s.classList.remove('active');
+        s.classList.add('done');
+      } else if (s === target) {
+        s.classList.remove('done', 'error');
+        s.classList.add('active');
+      }
+    });
+  }
 
   dlEventSource = new EventSource('/api/download/progress/' + id);
   dlEventSource.onmessage = (e) => {
@@ -1067,12 +1090,17 @@ function listenWizardProgress(id, url) {
       const data = JSON.parse(e.data);
       const { stage, message, progress } = data;
 
-      stepEls.forEach(s => {
-        if (s.dataset.step === stage) {
-          stepEls.forEach(x => { if (x.dataset.step !== stage && !x.classList.contains('done') && !x.classList.contains('error')) { x.classList.remove('active'); x.classList.add('done'); } });
-          s.classList.add('active');
+      if (stage === 'start' || stage === 'download' || stage === 'done' || stage === 'error') {
+        if (stage === 'error') {
+          stepEls.forEach(s => { s.classList.remove('active', 'done'); });
+          const errDiv = document.createElement('div');
+          errDiv.className = 'po-step error';
+          errDiv.innerHTML = '<span class="psi"><i class="fas fa-times"></i></span> Error: ' + (data.message || 'Failed');
+          $('wizProgressSteps').appendChild(errDiv);
+        } else {
+          activateStep(stage);
         }
-      });
+      }
 
       if (isPlaylist) {
         plContainer.classList.add('visible');
@@ -1085,13 +1113,37 @@ function listenWizardProgress(id, url) {
         }
       }
 
-      if (progress !== undefined) $('wizProgressBar').style.width = Math.min(progress, 99) + '%';
-      if (message) $('wizProgressDetail').textContent = message;
+      if (progress !== undefined) {
+        const pct = Math.min(progress, 100);
+        $('wizProgressBar').style.width = pct + '%';
+        $('wizProgressBar').style.transition = pct === 100 ? 'width 0.5s ease' : 'width 0.3s ease';
+        $('wizDlSize').textContent = pct < 100 ? pct.toFixed(1) + '%' : '100%';
+      }
+
+      if (message) {
+        const speedMatch = message.match(/at\s+([\d.]+[KMG]?i?B\/s)/);
+        const sizeMatch = message.match(/([\d.]+[KMG]?i?B)\s+of\s+([\d.]+[KMG]?i?B)/);
+        const etaMatch = message.match(/ETA\s+(\d+:\d+)/);
+
+        if (speedMatch) $('wizDlSpeed').textContent = speedMatch[1];
+        if (sizeMatch) $('wizDlSize').textContent = sizeMatch[1] + ' / ' + sizeMatch[2];
+        if (etaMatch) $('wizDlSize').textContent = ($('wizDlSize').textContent || '') + ' \u00B7 ETA ' + etaMatch[1];
+
+        if (message.includes('[download]') && message.includes('%')) {
+          const pctMatch = message.match(/(\d+\.?\d*)%/);
+          if (pctMatch && !sizeMatch) {
+            $('wizDlSize').textContent = pctMatch[1] + '%';
+          }
+        }
+        $('wizProgressDetail').textContent = message.replace(/\[download\]\s*/g, '').trim();
+      }
 
       if (stage === 'done') {
+        const pct = 100;
         $('wizProgressBar').style.width = '100%';
-        const doneEl = $('wizProgress').querySelector('[data-step="done"]');
-        if (doneEl) { doneEl.classList.remove('active'); doneEl.classList.add('done'); }
+        $('wizDlSize').textContent = '100%';
+        $('wizDlSpeed').textContent = '';
+        activateStep('done');
         setTimeout(() => {
           showToast('Download complete!', 'success');
           hideWizardProgress();
@@ -1106,11 +1158,6 @@ function listenWizardProgress(id, url) {
           loadDlHistory();
         }, 1500);
       } else if (stage === 'error') {
-        const errEl = $('wizProgress').querySelector('[data-step="error"]');
-        if (!errEl) {
-          const steps = $('wizProgressSteps');
-          steps.innerHTML += `<div class="po-step error"><span class="psi"><i class="fas fa-times"></i></span> Error</div>`;
-        }
         setTimeout(() => {
           showToast(data.message || 'Download failed', 'error');
           hideWizardProgress();
@@ -1209,16 +1256,40 @@ async function startPopularDownload(url, format) {
   const stepEls = ov.querySelectorAll('.po-step');
 
   dlEventSource = new EventSource('/api/download/progress/' + res.id);
+  const popStepEls = Array.from(ov.querySelectorAll('.po-step')).sort((a, b) => parseInt(a.dataset.order || 99) - parseInt(b.dataset.order || 99));
+
+  function popActivateStep(stageName) {
+    const target = popStepEls.find(s => s.dataset.step === stageName);
+    if (!target) return;
+    const targetOrder = parseInt(target.dataset.order || 99);
+    popStepEls.forEach(s => {
+      const sOrder = parseInt(s.dataset.order || 99);
+      if (sOrder < targetOrder) {
+        s.classList.remove('active');
+        s.classList.add('done');
+      } else if (s === target) {
+        s.classList.remove('done', 'error');
+        s.classList.add('active');
+      }
+    });
+  }
+
   dlEventSource.onmessage = (e) => {
     try {
       const data = JSON.parse(e.data);
+      const { stage, message, progress } = data;
 
-      stepEls.forEach(s => {
-        if (s.dataset.step === data.stage) {
-          stepEls.forEach(x => { if (x.dataset.step !== data.stage && !x.classList.contains('done') && !x.classList.contains('error')) { x.classList.remove('active'); x.classList.add('done'); } });
-          s.classList.add('active');
+      if (stage === 'start' || stage === 'download' || stage === 'done' || stage === 'error') {
+        if (stage === 'error') {
+          popStepEls.forEach(s => { s.classList.remove('active', 'done'); });
+          const errDiv = document.createElement('div');
+          errDiv.className = 'po-step error';
+          errDiv.innerHTML = '<span class="psi"><i class="fas fa-times"></i></span> Error: ' + (data.message || 'Failed');
+          $('popularProgressSteps').appendChild(errDiv);
+        } else {
+          popActivateStep(stage);
         }
-      });
+      }
 
       if (isPlaylist) {
         plContainer.classList.add('visible');
@@ -1229,13 +1300,36 @@ async function startPopularDownload(url, format) {
         }
       }
 
-      if (data.progress !== undefined) $('popularProgressBar').style.width = Math.min(data.progress, 99) + '%';
-      if (data.message) $('popularProgressDetail').textContent = data.message;
+      if (progress !== undefined) {
+        const pct = Math.min(progress, 100);
+        $('popularProgressBar').style.width = pct + '%';
+        $('popularProgressBar').style.transition = pct === 100 ? 'width 0.5s ease' : 'width 0.3s ease';
+        $('popularDlSize').textContent = pct < 100 ? pct.toFixed(1) + '%' : '100%';
+      }
+
+      if (message) {
+        const speedMatch = message.match(/at\s+([\d.]+[KMG]?i?B\/s)/);
+        const sizeMatch = message.match(/([\d.]+[KMG]?i?B)\s+of\s+([\d.]+[KMG]?i?B)/);
+        const etaMatch = message.match(/ETA\s+(\d+:\d+)/);
+
+        if (speedMatch) $('popularDlSpeed').textContent = speedMatch[1];
+        if (sizeMatch) $('popularDlSize').textContent = sizeMatch[1] + ' / ' + sizeMatch[2];
+        if (etaMatch) $('popularDlSize').textContent = ($('popularDlSize').textContent || '') + ' \u00B7 ETA ' + etaMatch[1];
+
+        if (message.includes('[download]') && message.includes('%')) {
+          const pctMatch = message.match(/(\d+\.?\d*)%/);
+          if (pctMatch && !sizeMatch) {
+            $('popularDlSize').textContent = pctMatch[1] + '%';
+          }
+        }
+        $('popularProgressDetail').textContent = message.replace(/\[download\]\s*/g, '').trim();
+      }
 
       if (data.stage === 'done') {
         $('popularProgressBar').style.width = '100%';
-        const doneEl = ov.querySelector('[data-step="done"]');
-        if (doneEl) { doneEl.classList.remove('active'); doneEl.classList.add('done'); }
+        $('popularDlSize').textContent = '100%';
+        $('popularDlSpeed').textContent = '';
+        popActivateStep('done');
         setTimeout(() => {
           showToast('Download complete!', 'success');
           ov.classList.remove('visible');

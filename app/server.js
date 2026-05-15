@@ -60,13 +60,28 @@ function getYtdlpPath() {
   return 'yt-dlp.exe';
 }
 
-function getFfmpegPath() {
+function ensureFfmpeg() {
+  const binDir = BIN_PATH;
+  if (!fs.existsSync(binDir)) fs.mkdirSync(binDir, { recursive: true });
   try {
-    const ff = require('ffmpeg-static');
-    if (ff) return ff;
-  } catch (_) {}
-  return 'ffmpeg';
+    const ffmpegSrc = require('ffmpeg-static');
+    const ffmpegDest = path.join(binDir, 'ffmpeg.exe');
+    if (!fs.existsSync(ffmpegDest) && ffmpegSrc && fs.existsSync(ffmpegSrc)) {
+      fs.copyFileSync(ffmpegSrc, ffmpegDest);
+      console.log('[ffmpeg] copied ffmpeg.exe');
+    }
+  } catch (e) { console.warn('[ffmpeg] ffmpeg-static not available:', e.message); }
+  try {
+    const ffprobeSrc = require('ffprobe-static').path;
+    const ffprobeDest = path.join(binDir, 'ffprobe.exe');
+    if (!fs.existsSync(ffprobeDest) && ffprobeSrc && fs.existsSync(ffprobeSrc)) {
+      fs.copyFileSync(ffprobeSrc, ffprobeDest);
+      console.log('[ffmpeg] copied ffprobe.exe');
+    }
+  } catch (e) { console.warn('[ffmpeg] ffprobe-static not available:', e.message); }
+  return binDir;
 }
+const FFMPEG_DIR = ensureFfmpeg();
 
 function sanitize(str) {
   return str.replace(/[<>:"/\\|?*]/g, '').trim();
@@ -257,12 +272,12 @@ app.post('/api/download', async (req, res) => {
   process.nextTick(async () => {
     try {
       const ytPath = getYtdlpPath();
-      const ffmpegPath = getFfmpegPath();
+      const ffmpegPath = FFMPEG_DIR;
       const dlDir = getDownloadsDir();
       const isAudio = audioOnly || mode === 'audio' || format === 'mp3';
 
       const baseArgs = [
-        '--ffmpeg-location', path.dirname(ffmpegPath),
+        '--ffmpeg-location', ffmpegPath,
         '--no-warnings',
         '--newline',
         '--progress',
@@ -350,11 +365,11 @@ app.post('/api/download-playlist', async (req, res) => {
   process.nextTick(async () => {
     try {
       const ytPath = getYtdlpPath();
-      const ffmpegPath = getFfmpegPath();
+      const ffmpegPath = FFMPEG_DIR;
       const dlDir = getDownloadsDir();
 
       const baseArgs = [
-        '--ffmpeg-location', path.dirname(ffmpegPath),
+        '--ffmpeg-location', ffmpegPath,
         '--no-warnings',
         '--newline',
         '--progress',
