@@ -370,8 +370,28 @@ body{
   font-size:12px;color:var(--text2);transition:all 0.3s;
 }
 .progress-overlay .po-step .psi{width:18px;text-align:center;flex-shrink:0}
-.progress-overlay .po-step.active{border-color:var(--primary);color:var(--text);background:rgba(239,68,68,0.08)}
-.progress-overlay .po-step.done{border-color:var(--green);color:var(--green);background:rgba(16,185,129,0.08)}
+.progress-overlay .po-step.active{
+  border-color:var(--primary);color:var(--text);
+  background:rgba(239,68,68,0.08);
+  animation:stepGlow 1.2s ease-in-out infinite;
+  box-shadow:0 0 12px rgba(239,68,68,0.15);
+}
+@keyframes stepGlow{
+  0%,100%{box-shadow:0 0 8px rgba(239,68,68,0.1)}
+  50%{box-shadow:0 0 16px rgba(239,68,68,0.25)}
+}
+.progress-overlay .po-step.active .psi i{animation:stepSpin 2s linear infinite}
+@keyframes stepSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+.progress-overlay .po-step.done{
+  border-color:var(--green);color:var(--green);
+  background:rgba(16,185,129,0.08);
+  animation:stepDone 0.5s ease;
+}
+@keyframes stepDone{
+  0%{transform:scale(0.95);opacity:0.5}
+  50%{transform:scale(1.03)}
+  100%{transform:scale(1);opacity:1}
+}
 .progress-overlay .po-step.error{border-color:var(--red);color:var(--red);background:rgba(239,68,68,0.08);word-break:break-all;max-height:60px;overflow-y:auto}
 .progress-overlay .po-speed{font-weight:400;color:var(--accent);margin-left:4px;font-size:11px}
 .progress-overlay .po-size{
@@ -495,6 +515,10 @@ body{
 .dl-item .dli-btn{background:none;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:4px;border-radius:4px;transition:all 0.15s}
 .dl-item .dli-btn:hover{background:var(--surface2)}
 .dl-item .dli-btn.rm:hover{color:var(--red)}
+.dl-item.err{border-color:rgba(239,68,68,0.2);background:rgba(239,68,68,0.04)}
+.dl-item.err .dli-msg{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--red);cursor:pointer}
+.dl-item.err .dli-msg:hover{color:var(--text)}
+.dl-item.err .dli-time{font-size:10px;color:var(--text3);flex-shrink:0}
 
 /* ── Update Overlay ── */
 .update-overlay{
@@ -746,6 +770,16 @@ body{
         </div>
         <div style="display:flex;gap:8px;margin-top:10px">
           <button class="setting-btn setting-btn-primary setting-btn-sm" id="clearDlBtn"><i class="fas fa-trash"></i> Clear History</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h4><i class="fas fa-exclamation-triangle" style="margin-right:4px;color:var(--red)"></i> Error Log</h4>
+        <div class="downloads-list" id="errorLogList">
+          <div class="empty-state"><i class="fas fa-check-circle" style="color:var(--green)"></i><p>No errors recorded</p></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="setting-btn setting-btn-primary setting-btn-sm" id="clearErrorsBtn"><i class="fas fa-trash"></i> Clear All</button>
         </div>
       </div>
 
@@ -1012,6 +1046,7 @@ async function wizFetchFormats() {
       $('wizDownloadBtn').disabled = false;
       $('fmtLoader').classList.remove('visible');
       $('wizStep2Next').disabled = false;
+      saveError('Failed to start format listing', url, 'api-response');
       return;
     }
 
@@ -1102,6 +1137,7 @@ async function wizFetchFormats() {
           $('wizStep2Next').disabled = false;
           clearTimeout(sseTimeout);
           cleanupEventSource();
+          saveError(data.message, state.wizUrl, 'list-formats');
         }
       } catch(_) {}
     };
@@ -1123,6 +1159,7 @@ async function wizFetchFormats() {
     $('fmtLoader').classList.remove('visible');
     $('wizFormatOutput').innerHTML = `<div class="fmt-line fmt-error">Error: ${escapeHtml(e.message)}</div>`;
     $('wizStep2Next').disabled = false;
+    saveError(e.message, state.wizUrl, 'fetch-formats');
   }
 }
 
@@ -1207,8 +1244,11 @@ function showWizardProgress() {
   $('wizProgressBar').style.width = '0%';
   $('wizProgressDetail').textContent = '';
   ov.querySelectorAll('.po-step').forEach(s => { s.className = 'po-step'; });
+  _lastStepOrder = -1;
+  _stepTimer = null;
   const start = ov.querySelector('[data-step="start"]');
   if (start) start.classList.add('active');
+  _lastStepOrder = 0;
 }
 
 function hideWizardProgress() {
@@ -1224,20 +1264,60 @@ function listenWizardProgress(id, url) {
   const plContainer = $('wizPlaylistProgress');
   const stepEls = Array.from($('wizProgress').querySelectorAll('.po-step')).sort((a, b) => parseInt(a.dataset.order || 99) - parseInt(b.dataset.order || 99));
 
+  let _stepTimer = null;
+  let _lastStepOrder = -1;
+
   function activateStep(stageName) {
     const target = stepEls.find(s => s.dataset.step === stageName);
     if (!target) return;
     const targetOrder = parseInt(target.dataset.order || 99);
-    stepEls.forEach(s => {
-      const sOrder = parseInt(s.dataset.order || 99);
-      if (sOrder < targetOrder) {
-        s.classList.remove('active');
-        s.classList.add('done');
-      } else if (s === target) {
-        s.classList.remove('done', 'error');
-        s.classList.add('active');
+    if (targetOrder <= _lastStepOrder) return;
+    if (_stepTimer) { clearTimeout(_stepTimer); _stepTimer = null; }
+
+    const doTransition = () => {
+      _lastStepOrder = targetOrder;
+      stepEls.forEach(s => {
+        const sOrder = parseInt(s.dataset.order || 99);
+        if (sOrder < targetOrder) {
+          s.classList.remove('active');
+          s.classList.add('done');
+        } else if (s === target) {
+          s.classList.remove('done', 'error');
+          s.classList.add('active');
+        }
+      });
+    };
+
+    if (_lastStepOrder >= 0 && targetOrder > _lastStepOrder + 1) {
+      const intermediate = stepEls.find(s => parseInt(s.dataset.order || 99) === _lastStepOrder + 1);
+      if (intermediate) {
+        _lastStepOrder = _lastStepOrder + 1;
+        stepEls.forEach(s => {
+          const sOrder = parseInt(s.dataset.order || 99);
+          if (sOrder < _lastStepOrder) {
+            s.classList.remove('active');
+            s.classList.add('done');
+          } else if (sOrder === _lastStepOrder) {
+            s.classList.remove('done', 'error');
+            s.classList.add('active');
+          }
+        });
+        if (targetOrder > _lastStepOrder + 1) {
+          _stepTimer = setTimeout(() => activateStep(stageName), 700);
+        } else {
+          _stepTimer = setTimeout(doTransition, 700);
+        }
+        return;
       }
-    });
+    }
+
+    if (stageName === 'done' || stageName === 'error' || stageName === 'cancelled') {
+      doTransition();
+    } else if (_lastStepOrder >= 0) {
+      _stepTimer = setTimeout(doTransition, 700);
+    } else {
+      doTransition();
+    }
   }
 
   dlEventSource = new EventSource('/api/download/progress/' + id);
@@ -1257,6 +1337,7 @@ function listenWizardProgress(id, url) {
           errDiv.innerHTML = '<span class="psi"><i class="fas fa-exclamation-circle"></i></span> ' + escapeHtml(errMsg.substring(0, 300));
           $('wizProgressSteps').appendChild(errDiv);
           setTimeout(() => { if (errDiv.parentNode) errDiv.remove(); }, 5000);
+          saveError(data.message || 'Unknown error', state.wizUrl, stage);
         } else if (stage === 'cancelled') {
           state.currentDlId = null;
           setTimeout(() => {
@@ -1458,8 +1539,9 @@ $('settingsModal').addEventListener('click', (e) => {
 });
 
 async function loadSettingsUI() {
-  const dlHistory = await api('/api/downloads');
+  const [dlHistory, errors] = await Promise.all([api('/api/downloads'), api('/api/errors')]);
   renderDlHistory(dlHistory || []);
+  renderErrorLog(errors || []);
   const settings = await api('/api/settings');
   if (settings && settings.downloadPath) $('downloadPath').value = settings.downloadPath;
   else $('downloadPath').value = 'downloads/';
@@ -1494,6 +1576,51 @@ async function loadDlHistory() {
   const dlHistory = await api('/api/downloads');
   renderDlHistory(dlHistory || []);
 }
+
+async function saveError(message, url, stage) {
+  await api('/api/errors', { method: 'POST', body: JSON.stringify({ message, url, stage }) });
+}
+
+function renderErrorLog(list) {
+  const container = $('errorLogList');
+  if (!list || !list.length) {
+    container.innerHTML = '<div class="empty-state"><i class="fas fa-check-circle" style="color:var(--green)"></i><p>No errors recorded</p></div>';
+    return;
+  }
+  container.innerHTML = list.map(e => `
+    <div class="dl-item err">
+      <i class="fas fa-exclamation-circle" style="color:var(--red);flex-shrink:0"></i>
+      <span class="dli-msg" title="${escapeHtml(e.message)}">${escapeHtml(e.message)}</span>
+      <span class="dli-time">${e.time ? new Date(e.time).toLocaleString() : ''}</span>
+      <div class="dli-actions">
+        <button class="dli-btn cp" data-msg="${escapeHtml(e.message)}" title="Copy"><i class="fas fa-copy"></i></button>
+        <button class="dli-btn rm" data-id="${e.id}" title="Dismiss"><i class="fas fa-times"></i></button>
+      </div>
+    </div>
+  `).join('');
+  container.querySelectorAll('.dli-btn.rm').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await api('/api/errors/remove', { method: 'POST', body: JSON.stringify({ id: btn.dataset.id }) });
+      loadErrorLog();
+    });
+  });
+  container.querySelectorAll('.dli-btn.cp').forEach(btn => {
+    btn.addEventListener('click', () => {
+      navigator.clipboard.writeText(btn.dataset.msg).then(() => showToast('Copied')).catch(() => {});
+    });
+  });
+}
+
+async function loadErrorLog() {
+  const errors = await api('/api/errors');
+  renderErrorLog(errors || []);
+}
+
+$('clearErrorsBtn').addEventListener('click', async () => {
+  await api('/api/errors/clear', { method: 'POST' });
+  loadErrorLog();
+  showToast('Error log cleared');
+});
 
 $('clearDlBtn').addEventListener('click', async () => {
   await api('/api/downloads/clear', { method: 'POST' });

@@ -14,6 +14,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const BIN_PATH = process.env.BIN_PATH || path.join(__dirname, '..', 'bin');
 const SETTINGS_FILE = process.env.ELECTRON_USERDATA ? path.join(process.env.ELECTRON_USERDATA, 'settings.json') : path.join(__dirname, '..', 'settings.json');
 const DOWNLOADS_STATE_FILE = process.env.ELECTRON_USERDATA ? path.join(process.env.ELECTRON_USERDATA, 'downloads-state.json') : path.join(__dirname, '..', 'downloads-state.json');
+const ERRORS_STATE_FILE = process.env.ELECTRON_USERDATA ? path.join(process.env.ELECTRON_USERDATA, 'errors-state.json') : path.join(__dirname, '..', 'errors-state.json');
 const APP_PATH = process.env.APP_PATH || __dirname;
 
 const DEFAULT_DOWNLOADS_DIR = path.join(__dirname, '..', 'downloads');
@@ -53,6 +54,14 @@ function loadDownloadsState() {
 }
 function saveDownloadsState(downloads) {
   fs.writeFileSync(DOWNLOADS_STATE_FILE, JSON.stringify(downloads, null, 2));
+}
+
+function loadErrorsState() {
+  try { if (fs.existsSync(ERRORS_STATE_FILE)) return JSON.parse(fs.readFileSync(ERRORS_STATE_FILE, 'utf-8')); } catch (_) {}
+  return [];
+}
+function saveErrorsState(errors) {
+  fs.writeFileSync(ERRORS_STATE_FILE, JSON.stringify(errors, null, 2));
 }
 
 function getYtdlpPath() {
@@ -795,6 +804,31 @@ app.post('/api/downloads/remove', (req, res) => {
   const state = loadDownloadsState().filter(d => d.id !== id);
   saveDownloadsState(state);
   try { if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch (_) {}
+  res.json({ ok: true });
+});
+
+app.get('/api/errors', (req, res) => {
+  res.json(loadErrorsState());
+});
+
+app.post('/api/errors', (req, res) => {
+  const { message, url, stage } = req.body;
+  if (!message) return res.status(400).json({ error: 'Message required' });
+  const errors = loadErrorsState();
+  errors.unshift({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), message, url: url || '', stage: stage || '', time: new Date().toISOString() });
+  if (errors.length > 200) errors.length = 200;
+  saveErrorsState(errors);
+  res.json({ ok: true });
+});
+
+app.post('/api/errors/clear', (req, res) => {
+  saveErrorsState([]);
+  res.json({ ok: true });
+});
+
+app.post('/api/errors/remove', (req, res) => {
+  const { id } = req.body;
+  saveErrorsState(loadErrorsState().filter(e => e.id !== id));
   res.json({ ok: true });
 });
 
