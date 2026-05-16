@@ -1306,6 +1306,7 @@ async function wizStartDownload() {
   const isAudio = state.wizType === 'audio';
   const isPlaylist = checkIsPlaylist(url);
   if (!isPlaylist) url = stripPlaylistParams(url);
+  else url = url.replace(/[?&]index=\d+/g, '').replace(/[?&]$/, '');
   const payload = { url, mode: state.wizType };
 
   if (isAudio) {
@@ -1387,8 +1388,13 @@ function listenWizardProgress(id, url) {
           stepEls.forEach(s => { s.classList.remove('active', 'done'); });
           const errDiv = document.createElement('div');
           errDiv.className = 'po-step error';
+          errDiv.style.cursor = 'pointer';
           const errMsg = data.message || 'Failed';
-          errDiv.innerHTML = '<span class="psi"><i class="fas fa-times"></i></span> Error: ' + escapeHtml(errMsg.substring(0, 300));
+          errDiv.innerHTML = '<span class="psi"><i class="fas fa-exclamation-circle"></i></span> Error: ' + escapeHtml(errMsg.substring(0, 300)) + ' <span style="margin-left:auto;font-size:11px;opacity:0.7">Dismiss</span>';
+          errDiv.addEventListener('click', () => {
+            state.currentDlId = null;
+            hideWizardProgress();
+          });
           $('wizProgressSteps').appendChild(errDiv);
         } else if (stage === 'cancelled') {
           state.currentDlId = null;
@@ -1533,6 +1539,7 @@ async function startPopularDownload(url, format) {
   const isAudio = format === 'mp3';
   const isPlaylist = checkIsPlaylist(url);
   if (!isPlaylist) url = stripPlaylistParams(url);
+  else url = url.replace(/[?&]index=\d+/g, '').replace(/[?&]$/, '');
 
   const ov = $('popularProgress');
   ov.classList.add('visible');
@@ -1602,8 +1609,14 @@ async function startPopularDownload(url, format) {
           popStepEls.forEach(s => { s.classList.remove('active', 'done'); });
           const errDiv = document.createElement('div');
           errDiv.className = 'po-step error';
+          errDiv.style.cursor = 'pointer';
           const errMsg = data.message || 'Failed';
-          errDiv.innerHTML = '<span class="psi"><i class="fas fa-times"></i></span> Error: ' + escapeHtml(errMsg.substring(0, 300));
+          errDiv.innerHTML = '<span class="psi"><i class="fas fa-exclamation-circle"></i></span> Error: ' + escapeHtml(errMsg.substring(0, 300)) + ' <span style="margin-left:auto;font-size:11px;opacity:0.7">Dismiss</span>';
+          errDiv.addEventListener('click', () => {
+            state.currentDlId = null;
+            ov.classList.remove('visible');
+            state.downloading = false;
+          });
           $('popularProgressSteps').appendChild(errDiv);
         } else if (stage === 'cancelled') {
           state.currentDlId = null;

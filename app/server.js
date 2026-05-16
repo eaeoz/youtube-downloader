@@ -335,7 +335,8 @@ app.post('/api/download', async (req, res) => {
         '--newline',
         '--progress',
         '-o', path.join(dlDir, isPlaylist_ ? '%(playlist_title)s' : '%(title)s') + `_${id}` + (isPlaylist_ ? '/%(playlist_index)s - %(title)s.%(ext)s' : '.%(ext)s'),
-        '--print', 'after_move:filepath'
+        '--print', 'after_move:filepath',
+        '--extractor-args', 'youtube:player_client=android,web'
       ];
 
       if (formatCode && formatCode !== 'best') {
@@ -432,7 +433,9 @@ app.post('/api/download-playlist', async (req, res) => {
         '--no-warnings',
         '--newline',
         '--progress',
-        '--print', 'after_move:filepath'
+        '--print', 'after_move:filepath',
+        '--ignore-errors',
+        '--extractor-args', 'youtube:player_client=android,web'
       ];
 
       if (startIndex) baseArgs.push('--playlist-start', parseInt(startIndex));
@@ -455,7 +458,8 @@ app.post('/api/download-playlist', async (req, res) => {
         baseArgs.push('-o', outputTemplate);
       }
 
-      baseArgs.push(url);
+      const cleanUrl = url.replace(/[?&]index=\d+/g, '').replace(/[?&]$/, '');
+      baseArgs.push(cleanUrl);
 
       emitter.emit('progress', { stage: 'playlist_start', message: 'Starting playlist download...' });
 
@@ -538,6 +542,8 @@ app.post('/api/download-playlist', async (req, res) => {
         delete playlistDirs[id];
         if (code === 0) {
           emitter.emit('progress', { stage: 'done', message: 'Playlist download complete!', progress: 100 });
+        } else if (code === 1) {
+          emitter.emit('progress', { stage: 'done', message: 'Playlist download complete (some items unavailable)', progress: 100 });
         } else {
           emitter.emit('progress', { stage: 'error', message: `Playlist download failed (exit ${code}): ${stderr.substring(0, 500)}` });
         }
