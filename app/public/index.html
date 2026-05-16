@@ -773,7 +773,7 @@ function showToast(msg, type = 'success') {
   }
   t.className = 'toast show ' + type;
   clearTimeout(t._timer);
-  t._timer = setTimeout(() => t.classList.remove('show'), 3000);
+  t._timer = setTimeout(() => t.classList.remove('show'), 5000);
 }
 
 function setTheme(t) {
@@ -1007,57 +1007,34 @@ async function wizFetchFormats() {
           receivedDone = true;
           state.wizFormats = data.fullOutput || formatOutput;
           let result = data.fmtData || null;
-          if (!result) {
-            result = findBestAudioFormat(state.wizFormats);
-          }
+          if (!result) result = findBestAudioFormat(state.wizFormats);
           state.bestAudioFmt = result.bestId;
           state.bestAudioBitrate = result.mp3Bitrate;
           state.audioFmtMap = result.fmtMap;
 
-          const select = $('wizFormatCode');
-          select.innerHTML = '<option value="best">best (auto)</option>';
-
-          // Parse per-video format sections, compute intersection of format IDs
-          const fullOut = data.fullOutput || formatOutput;
-          const sections = fullOut.split(/\n(?=\[info\] Available formats for [^:]+:)/);
-          const perVideoSets = [];
-          const idToLabel = {};
-          for (const section of sections) {
-            if (!section.includes('Available formats for')) continue;
-            const lines = section.split('\n').filter(l => l.trim());
-            const fmtIds = new Set();
-            for (const line of lines) {
-              const m = line.match(/^\s*(\d+)\s/);
-              if (!m) continue;
-              const id = m[1];
-              if (isAudioMode && !line.includes('audio only')) continue;
-              if (!isAudioMode && line.includes('audio only')) continue;
-              fmtIds.add(id);
-              if (!idToLabel[id]) {
-                const label = line.trim().split(/\s+/).slice(0, 6).join(' ');
-                idToLabel[id] = `${id} - ${label}`;
-              }
-            }
-            if (fmtIds.size > 0) perVideoSets.push(fmtIds);
-          }
-
-          // Union: all unique format IDs across all videos
           const allIds = new Set();
-          for (const set of perVideoSets) {
-            for (const id of set) allIds.add(id);
+          const idToLabel = {};
+          for (const line of (data.fullOutput || formatOutput).split('\n')) {
+            const m = line.match(/^\s*(\d+)\s/);
+            if (!m) continue;
+            const id = m[1];
+            if (isAudioMode && !line.includes('audio only')) continue;
+            if (!isAudioMode && line.includes('audio only')) continue;
+            allIds.add(id);
+            if (!idToLabel[id]) {
+              idToLabel[id] = `${id} - ${line.trim().split(/\s+/).slice(0, 6).join(' ')}`;
+            }
           }
 
-          // Populate dropdown with all formats (sorted numerically)
           const sorted = [...allIds].sort((a, b) => parseInt(a) - parseInt(b));
+          const opts = ['<option value="best">best (auto)</option>'];
           for (const id of sorted) {
-            const opt = document.createElement('option');
-            opt.value = id;
-            opt.textContent = idToLabel[id] || id;
-            select.appendChild(opt);
+            opts.push(`<option value="${id}">${escapeHtml(idToLabel[id] || id)}</option>`);
           }
+          $('wizFormatCode').innerHTML = opts.join('');
 
-          if (state.wizType === 'audio' && result.bestId) {
-            select.value = result.bestId;
+          if (state.wizType === 'audio' && state.bestAudioFmt) {
+            $('wizFormatCode').value = state.bestAudioFmt;
             updateWizBitrateHint();
           }
           $('wizStep2Next').disabled = false;
@@ -1206,16 +1183,14 @@ function listenWizardProgress(id, url) {
       if (['start', 'download', 'extract', 'merge', 'done', 'error', 'cancelled'].includes(stage)) {
         if (stage === 'error') {
           stepEls.forEach(s => { s.classList.remove('active', 'done'); });
+          const existingErrors = $('wizProgressSteps').querySelectorAll('.po-step.error');
+          existingErrors.forEach(el => el.remove());
           const errDiv = document.createElement('div');
           errDiv.className = 'po-step error';
-          errDiv.style.cursor = 'pointer';
           const errMsg = data.message || 'Failed';
-          errDiv.innerHTML = '<span class="psi"><i class="fas fa-exclamation-circle"></i></span> Error: ' + escapeHtml(errMsg.substring(0, 300)) + ' <span style="margin-left:auto;font-size:11px;opacity:0.7">Dismiss</span>';
-          errDiv.addEventListener('click', () => {
-            state.currentDlId = null;
-            hideWizardProgress();
-          });
+          errDiv.innerHTML = '<span class="psi"><i class="fas fa-exclamation-circle"></i></span> ' + escapeHtml(errMsg.substring(0, 300));
           $('wizProgressSteps').appendChild(errDiv);
+          setTimeout(() => { if (errDiv.parentNode) errDiv.remove(); }, 5000);
         } else if (stage === 'cancelled') {
           state.currentDlId = null;
           setTimeout(() => {
@@ -1229,6 +1204,10 @@ function listenWizardProgress(id, url) {
 
       if (isPlaylist) {
         plContainer.classList.add('visible');
+        // Clear stale error divs when new progress arrives
+        if (stage !== 'error') {
+          $('wizProgressSteps').querySelectorAll('.po-step.error').forEach(el => el.remove());
+        }
         if (data.item && data.total) {
           updatePlaylistItem(plContainer, data);
         }
