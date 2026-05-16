@@ -171,7 +171,7 @@ app.post('/api/info', async (req, res) => {
   try {
     const ytPath = getYtdlpPath();
     const isPlaylist_ = isPlaylist(url);
-    const args = ['--dump-json', '--no-warnings', '--flat-playlist', '--extractor-args', 'youtube:player_client=android'];
+    const args = ['--dump-json', '--no-warnings', '--flat-playlist'];
     if (isPlaylist_) args.push('--flat-playlist');
     args.push(url);
 
@@ -245,7 +245,7 @@ app.post('/api/list-formats', async (req, res) => {
       const ytPath = getYtdlpPath();
       emitter.emit('progress', { stage: 'formats', message: `Fetching formats for: ${url}`, formats: [] });
 
-      const proc = spawn(ytPath, ['--list-formats', url, '--no-warnings', '--extractor-args', 'youtube:player_client=android'], {
+      const proc = spawn(ytPath, ['--list-formats', url, '--no-warnings'], {
         stdio: ['pipe', 'pipe', 'pipe'],
         windowsHide: true
       });
@@ -423,131 +423,118 @@ app.post('/api/download-playlist', async (req, res) => {
       const ffmpegPath = FFMPEG_DIR;
       const dlDir = getDownloadsDir();
 
-      const baseArgs = [
-        '--ffmpeg-location', ffmpegPath,
-        '--no-warnings',
-        '--newline',
-        '--progress',
-        '--print', 'after_move:filepath',
-        '--ignore-errors',
-        '--extractor-args', 'youtube:player_client=android'
-      ];
-
-      if (startIndex) baseArgs.push('--playlist-start', parseInt(startIndex));
-      if (endIndex) baseArgs.push('--playlist-end', parseInt(endIndex));
-
-      const outputTemplate = path.join(dlDir, `%(playlist_title)s_pl-${id}/%(playlist_index)s - %(title)s.%(ext)s`);
-      const tempTemplate = path.join(dlDir, 'temp_%(id)s.%(ext)s');
-
-      if (audioOnly) {
-        baseArgs.push('-x', '--audio-format', 'mp3');
-        const ab = parseInt(audioBitrate) || 0;
-        baseArgs.push('--audio-quality', ab > 0 ? Math.min(ab, 320) + 'k' : '0');
-        baseArgs.push('-o', outputTemplate);
-      } else {
-        const fmtCode = formatCode || 'bestvideo+bestaudio/best';
-        baseArgs.push('-f', fmtCode, '--merge-output-format', 'mp4');
-        baseArgs.push('-o', outputTemplate);
+      function buildArgs(extractorArgs) {
+        const args = [
+          '--ffmpeg-location', ffmpegPath,
+          '--no-warnings',
+          '--newline',
+          '--progress',
+          '--print', 'after_move:filepath',
+          '--ignore-errors'
+        ];
+        if (extractorArgs) args.push('--extractor-args', extractorArgs);
+        if (startIndex) args.push('--playlist-start', parseInt(startIndex));
+        if (endIndex) args.push('--playlist-end', parseInt(endIndex));
+        const tmpl = path.join(dlDir, `%(playlist_title)s_pl-${id}/%(playlist_index)s - %(title)s.%(ext)s`);
+        if (audioOnly) {
+          args.push('-x', '--audio-format', 'mp3');
+          const ab = parseInt(audioBitrate) || 0;
+          args.push('--audio-quality', ab > 0 ? Math.min(ab, 320) + 'k' : '0');
+          args.push('-o', tmpl);
+        } else {
+          const fmtCode = formatCode || 'bestvideo+bestaudio/best';
+          args.push('-f', fmtCode, '--merge-output-format', 'mp4');
+          args.push('-o', tmpl);
+        }
+        const cleanUrl = url.replace(/[?&]index=\d+/g, '').replace(/[?&]$/, '');
+        args.push(cleanUrl);
+        return args;
       }
 
-      const cleanUrl = url.replace(/[?&]index=\d+/g, '').replace(/[?&]$/, '');
-      baseArgs.push(cleanUrl);
+      function spawnProcess(args) {
+        return new Promise((resolve) => {
+          const proc = spawn(ytPath, args, { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+          downloadProcs[id] = proc;
+          let stderr = '';
+          let lastItemInfo = {};
+
+          proc.stdout.on('data', (data) => {
+            const text = data.toString().trim();
+            if (text) {
+              if (!playlistDirs[id]) {
+                const dir = path.dirname(text);
+                if (fs.existsSync(dir)) playlistDirs[id] = dir;
+              }
+              emitter.emit('progress', { stage: 'file_complete', message: `Completed: ${text}`, file: text });
+            }
+          });
+
+          proc.stderr.on('data', (data) => {
+            const text = data.toString();
+            stderr += text;
+            for (const line of text.split('\n').filter(l => l.trim())) {
+              const itemMatch = line.match(/\[download\] Downloading item (\d+) of (\d+)/);
+              if (itemMatch) {
+                lastItemInfo = { current: parseInt(itemMatch[1]), total: parseInt(itemMatch[2]) };
+                emitter.emit('progress', { stage: 'playlist_item', message: `Downloading item ${lastItemInfo.current}/${lastItemInfo.total}`, item: lastItemInfo.current, total: lastItemInfo.total });
+                continue;
+              }
+              if (line.includes('[download]') && line.includes('%')) {
+                const pctMatch = line.match(/(\d+\.?\d*)%/);
+                const speedMatch = line.match(/at\s+([\d.]+[KMG]?i?B\/s)/);
+                if (pctMatch && lastItemInfo.current) {
+                  emitter.emit('progress', { stage: 'playlist_progress', message: line.trim(), item: lastItemInfo.current, total: lastItemInfo.total, progress: parseFloat(pctMatch[1]), speed: speedMatch ? speedMatch[1] : '' });
+                }
+                continue;
+              }
+              if (line.includes('[download]') && line.includes('Destination')) {
+                if (!playlistDirs[id]) {
+                  const m = line.match(/Destination:\s*(.+)/i);
+                  if (m) { const d = path.dirname(m[1].trim()); if (fs.existsSync(d)) playlistDirs[id] = d; }
+                }
+                continue;
+              }
+              emitter.emit('progress', { stage: 'info', message: line.trim() });
+            }
+          });
+
+          proc.on('close', (code) => resolve({ code, stderr }));
+          proc.on('error', (e) => resolve({ code: -1, stderr: e.message }));
+        });
+      }
 
       emitter.emit('progress', { stage: 'playlist_start', message: 'Starting playlist download...' });
 
-      const proc = spawn(ytPath, baseArgs, { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
-      downloadProcs[id] = proc;
-      let stderr = '';
-      let lastItemInfo = {};
+      // Pass 1: default client (no extractor-args) for highest quality on available videos
+      const result1 = await spawnProcess(buildArgs(null));
 
-      proc.stdout.on('data', (data) => {
-        const text = data.toString().trim();
-        if (text) {
-          if (!playlistDirs[id]) {
-            const dir = path.dirname(text);
-            if (fs.existsSync(dir)) {
-              playlistDirs[id] = dir;
-            }
-          }
-          emitter.emit('progress', { stage: 'file_complete', message: `Completed: ${text}`, file: text });
-        }
-      });
+      // Pass 2: Android client for DRM videos (skips already-downloaded files)
+      if (!downloadProcs[id]) {
+        emitter.emit('progress', { stage: 'cancelled', message: 'Download cancelled' });
+        setTimeout(() => delete downloadEmitters[id], 2000);
+        return;
+      }
+      await spawnProcess(buildArgs('youtube:player_client=android'));
 
-      proc.stderr.on('data', (data) => {
-        const text = data.toString();
-        stderr += text;
-        const lines = text.split('\n').filter(l => l.trim());
+      if (!downloadProcs[id]) {
+        emitter.emit('progress', { stage: 'cancelled', message: 'Download cancelled' });
+        setTimeout(() => delete downloadEmitters[id], 2000);
+        return;
+      }
 
-        for (const line of lines) {
-          const itemMatch = line.match(/\[download\] Downloading item (\d+) of (\d+)/);
-          if (itemMatch) {
-            const current = parseInt(itemMatch[1]);
-            const total = parseInt(itemMatch[2]);
-            lastItemInfo = { current, total };
-            emitter.emit('progress', {
-              stage: 'playlist_item',
-              message: `Downloading item ${current}/${total}`,
-              item: current,
-              total
-            });
-            continue;
-          }
+      delete downloadProcs[id];
+      delete playlistDirs[id];
 
-          if (line.includes('[download]') && line.includes('%')) {
-            const pctMatch = line.match(/(\d+\.?\d*)%/);
-            const speedMatch = line.match(/at\s+([\d.]+[KMG]?i?B\/s)/);
-            const etaMatch = line.match(/ETA\s+(\d+:\d+)/);
-            if (pctMatch && lastItemInfo.current) {
-              emitter.emit('progress', {
-                stage: 'playlist_progress',
-                message: line.trim(),
-                item: lastItemInfo.current,
-                total: lastItemInfo.total,
-                progress: parseFloat(pctMatch[1]),
-                speed: speedMatch ? speedMatch[1] : '',
-                eta: etaMatch ? etaMatch[1] : ''
-              });
-            }
-            continue;
-          }
-
-          if (line.includes('[download]') && line.includes('Destination')) {
-            if (!playlistDirs[id]) {
-              const destMatch = line.match(/Destination:\s*(.+)/i);
-              if (destMatch) {
-                const dir = path.dirname(destMatch[1].trim());
-                if (fs.existsSync(dir)) {
-                  playlistDirs[id] = dir;
-                }
-              }
-            }
-            emitter.emit('progress', { stage: 'destination', message: line.trim() });
-            continue;
-          }
-
-          emitter.emit('progress', { stage: 'info', message: line.trim() });
-        }
-      });
-
-      proc.on('close', (code) => {
-        delete downloadProcs[id];
-        delete playlistDirs[id];
-        if (code === 0) {
-          emitter.emit('progress', { stage: 'done', message: 'Playlist download complete!', progress: 100 });
-        } else if (code === 1) {
-          emitter.emit('progress', { stage: 'done', message: 'Playlist download complete (some items unavailable)', progress: 100 });
-        } else {
-          emitter.emit('progress', { stage: 'error', message: `Playlist download failed (exit ${code}): ${stderr.substring(0, 500)}` });
-        }
-        setTimeout(() => delete downloadEmitters[id], 5000);
-      });
-
-      proc.on('error', (e) => {
-        delete downloadProcs[id];
-        delete playlistDirs[id];
-        emitter.emit('progress', { stage: 'error', message: e.message });
-        setTimeout(() => delete downloadEmitters[id], 5000);
-      });
+      const hadError = result1.code > 1 || (result1.code < 0);
+      const someUnavailable = result1.code === 1;
+      if (hadError) {
+        emitter.emit('progress', { stage: 'error', message: `Download failed: ${result1.stderr.substring(0, 500)}` });
+      } else if (someUnavailable) {
+        emitter.emit('progress', { stage: 'done', message: 'Playlist download complete (some unavailable, lower quality for some)', progress: 100 });
+      } else {
+        emitter.emit('progress', { stage: 'done', message: 'Playlist download complete!', progress: 100 });
+      }
+      setTimeout(() => delete downloadEmitters[id], 5000);
     } catch (e) {
       emitter.emit('progress', { stage: 'error', message: e.message });
       setTimeout(() => delete downloadEmitters[id], 5000);
