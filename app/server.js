@@ -438,7 +438,7 @@ app.post('/api/download-playlist', async (req, res) => {
       if (startIndex) baseArgs.push('--playlist-start', parseInt(startIndex));
       if (endIndex) baseArgs.push('--playlist-end', parseInt(endIndex));
 
-      const outputTemplate = path.join(dlDir, '%(playlist_title)s_pl/%(playlist_index)s - %(title)s.%(ext)s');
+      const outputTemplate = path.join(dlDir, `%(playlist_title)s_pl-${id}/%(playlist_index)s - %(title)s.%(ext)s`);
       const tempTemplate = path.join(dlDir, 'temp_%(id)s.%(ext)s');
 
       if (audioOnly) {
