@@ -185,10 +185,16 @@ app.post('/api/info', async (req, res) => {
     if (isPlaylist_) args.push('--flat-playlist');
     args.push(url);
 
-    const result = execSync(`"${ytPath}" ${args.join(' ')}`, {
-      encoding: 'utf-8',
-      maxBuffer: 10 * 1024 * 1024,
-      windowsHide: true
+    const result = await new Promise((resolve, reject) => {
+      const proc = spawn(ytPath, args, { windowsHide: true });
+      let stdout = '', stderr = '';
+      proc.stdout.on('data', (d) => { stdout += d.toString(); });
+      proc.stderr.on('data', (d) => { stderr += d.toString(); });
+      proc.on('close', (code) => {
+        if (code === 0) resolve(stdout);
+        else reject(new Error(stderr.trim() || `Exit code ${code}`));
+      });
+      proc.on('error', reject);
     });
 
     const lines = result.trim().split('\n').filter(l => l.trim());
@@ -393,7 +399,28 @@ app.post('/api/download', async (req, res) => {
         emitter.emit('progress', { stage: 'start', message: 'Processing playlist items...' });
       }
 
-      const result = await execSpawn(ytPath, baseArgs, emitter, 'download', id);
+      let result;
+      try {
+        result = await execSpawn(ytPath, baseArgs, emitter, 'download', id);
+      } catch (firstErr) {
+        if (firstErr.message && firstErr.message.includes('Requested format is not available')) {
+          emitter.emit('progress', { stage: 'info', message: 'Format not available with default client, retrying with Android client...' });
+          const androidArgs = [...baseArgs];
+          const ffmpegIdx = androidArgs.indexOf('--ffmpeg-location');
+          androidArgs.splice(ffmpegIdx > -1 ? ffmpegIdx + 2 : 1, 0, '--extractor-args', 'youtube:player_client=android');
+          try {
+            result = await execSpawn(ytPath, androidArgs, emitter, 'download', id);
+          } catch (secondErr) {
+            emitter.emit('progress', { stage: 'error', message: secondErr.message });
+            setTimeout(() => delete downloadEmitters[id], 5000);
+            return;
+          }
+        } else {
+          emitter.emit('progress', { stage: 'error', message: firstErr.message });
+          setTimeout(() => delete downloadEmitters[id], 5000);
+          return;
+        }
+      }
 
       if (result && result.cancelled) {
         emitter.emit('progress', { stage: 'cancelled', message: 'Download cancelled' });

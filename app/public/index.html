@@ -421,31 +421,46 @@ body{
   display:flex;align-items:center;gap:8px;
   padding:6px 10px;border-radius:var(--radius-xs);
   background:var(--surface);border:1px solid var(--border);
-  font-size:11px;transition:all 0.3s;
-  animation:slideIn 0.3s ease both;
+  font-size:11px;transition:all 0.4s cubic-bezier(0.4,0,0.2,1);
+  position:relative;overflow:hidden;
 }
-@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+.pl-item.entering{animation:plItemEnter 0.4s cubic-bezier(0.4,0,0.2,1) both}
+@keyframes plItemEnter{0%{opacity:0;transform:translateY(-12px) scale(0.96);max-height:0;padding:0 10px}100%{opacity:1;transform:translateY(0) scale(1);max-height:40px;padding:6px 10px}}
 .pl-item .pli-num{
-  width:20px;height:20px;border-radius:50%;
+  width:22px;height:22px;border-radius:50%;
   background:var(--bg2);color:var(--text3);
   display:flex;align-items:center;justify-content:center;
   font-size:10px;font-weight:700;flex-shrink:0;
+  transition:all 0.3s;
 }
-.pl-item .pli-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl-item .pli-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color 0.3s}
 .pl-item .pli-bar{
-  width:60px;height:3px;
-  background:var(--border);border-radius:2px;overflow:hidden;flex-shrink:0;
+  width:64px;height:4px;
+  background:var(--border);border-radius:3px;overflow:hidden;flex-shrink:0;
 }
 .pl-item .pli-bar .fill{
   height:100%;width:0%;
-  background:linear-gradient(90deg,var(--primary),var(--accent));
-  border-radius:2px;transition:width 0.4s ease;
+  background:linear-gradient(90deg,var(--primary),var(--accent),var(--primary));
+  background-size:200% 100%;
+  border-radius:3px;transition:width 0.5s cubic-bezier(0.4,0,0.2,1);
 }
-.pl-item .pli-status{font-size:10px;color:var(--text3);flex-shrink:0;width:30px;text-align:right}
-.pl-item.done{border-color:var(--green);background:rgba(16,185,129,0.05)}
+.pl-item.downloading .pli-bar .fill{animation:plBarShimmer 1.5s linear infinite}
+@keyframes plBarShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.pl-item .pli-size{font-size:9px;color:var(--text3);flex-shrink:0;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:none;transition:color 0.3s}
+.pl-item.downloading .pli-size{display:block}
+.pl-item .pli-status{font-size:10px;color:var(--text3);flex-shrink:0;width:32px;text-align:right;font-variant-numeric:tabular-nums;transition:color 0.3s}
+.pl-item.done{border-color:var(--green);background:rgba(16,185,129,0.05);animation:plItemDone 0.5s cubic-bezier(0.4,0,0.2,1)}
+@keyframes plItemDone{0%{transform:scale(1)}40%{transform:scale(1.02)}100%{transform:scale(1)}}
+.pl-item.done .pli-num{background:var(--green);color:#fff}
 .pl-item.done .pli-status{color:var(--green)}
+.pl-item.done .pli-bar .fill{background:var(--green);animation:none}
 .pl-item.downloading{border-color:var(--primary);background:rgba(239,68,68,0.05)}
-.pl-item.pending{opacity:0.6}
+.pl-item.downloading .pli-num{background:var(--primary);color:#fff;animation:plNumPulse 1.2s ease-in-out infinite}
+@keyframes plNumPulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4)}50%{box-shadow:0 0 0 4px rgba(239,68,68,0)}}
+.pl-item.error{border-color:var(--red);background:rgba(239,68,68,0.08);animation:plItemShake 0.4s ease}
+@keyframes plItemShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.pl-item.error .pli-num{background:var(--red);color:#fff}
+.pl-item.error .pli-status{color:var(--red)}
 
 /* ── yt-dlp Status Banner ── */
 .ytdlp-banner{
@@ -805,6 +820,9 @@ const state = {
   bestAudioFmt: null,
   bestAudioBitrate: 320,
   audioFmtMap: {},
+  formatInfo: {},
+  playlistEntries: [],
+  wizCleanUrl: '',
   downloading: false,
   currentDlId: null,
   theme: 'dark',
@@ -1038,7 +1056,9 @@ async function wizFetchFormats() {
   wizGoTo(3);
 
   try {
-    const res = await api('/api/list-formats', { method: 'POST', body: JSON.stringify({ url }) });
+    const fetchUrl = isPlaylist ? url : stripPlaylistParams(url);
+    state.wizCleanUrl = fetchUrl;
+    const res = await api('/api/list-formats', { method: 'POST', body: JSON.stringify({ url: fetchUrl }) });
     if (!res || !res.id) {
       $('wizFormatOutput').innerHTML = '<div class="fmt-line fmt-error">Failed to start format listing</div>';
       $('wizFormatOutput').style.display = '';
@@ -1098,6 +1118,7 @@ async function wizFetchFormats() {
 
           const allIds = new Set();
           const idToLabel = {};
+          state.formatInfo = {};
           for (const line of (data.fullOutput || formatOutput).split('\n')) {
             const m = line.match(/^\s*(\d+)\s/);
             if (!m) continue;
@@ -1107,6 +1128,16 @@ async function wizFetchFormats() {
             allIds.add(id);
             if (!idToLabel[id]) {
               idToLabel[id] = `${id} - ${line.trim().split(/\s+/).slice(0, 6).join(' ')}`;
+            }
+            // Parse format info for video modes
+            if (!isAudioMode) {
+              const tokens = line.trim().split(/\s+/);
+              const ext = tokens[1] || 'mp4';
+              const resMatch = tokens[2] ? tokens[2].match(/(\d+)x(\d+)/) : null;
+              const height = resMatch ? parseInt(resMatch[2]) : 0;
+              if (height > 0 && (!state.formatInfo[id] || state.formatInfo[id].height < height)) {
+                state.formatInfo[id] = { height, ext };
+              }
             }
           }
 
@@ -1128,6 +1159,11 @@ async function wizFetchFormats() {
           cleanupEventSource();
 
           if (!data.fmtData) fetchAudioBitratesFromJson();
+
+          // Fetch playlist entries for titles
+          if (isPlaylist && state.playlistMode) {
+            fetchPlaylistEntries(url);
+          }
         } else if (data.stage === 'error') {
           $('wizFormatOutput').innerHTML += `<div class="fmt-line fmt-error">${escapeHtml(data.message)}</div>`;
           $('wizFormatOutput').style.display = '';
@@ -1220,7 +1256,16 @@ async function wizStartDownload() {
     }
   } else {
     const needsMerge = formatCode !== 'best' && !formatCode.includes('+') && !formatCode.includes('/');
-    payload.formatCode = needsMerge ? formatCode + '+bestaudio' : formatCode;
+    if (needsMerge) {
+      const info = state.formatInfo[formatCode];
+      if (info && info.height > 0) {
+        payload.formatCode = `bestvideo[height<=${info.height}][ext=${info.ext || 'mp4'}]+bestaudio/best[height<=${info.height}][ext=${info.ext || 'mp4'}]`;
+      } else {
+        payload.formatCode = formatCode + '+bestaudio';
+      }
+    } else {
+      payload.formatCode = formatCode;
+    }
   }
 
   state.downloading = true;
@@ -1326,8 +1371,13 @@ function listenWizardProgress(id, url) {
       const data = JSON.parse(e.data);
       const { stage, message, progress } = data;
 
-      if (['start', 'download', 'extract', 'merge', 'done', 'error', 'cancelled'].includes(stage)) {
-        if (stage === 'error') {
+      if (['start', 'download', 'extract', 'merge', 'done', 'error', 'cancelled', 'playlist_start', 'playlist_item', 'playlist_progress'].includes(stage)) {
+        if (stage === 'playlist_start' || stage === 'playlist_item' || stage === 'playlist_progress') {
+          if (stage === 'playlist_start') {
+            $('wizProgressTitle').textContent = 'Downloading Playlist...';
+          }
+          activateStep('download');
+        } else if (stage === 'error') {
           stepEls.forEach(s => { s.classList.remove('active', 'done'); });
           const existingErrors = $('wizProgressSteps').querySelectorAll('.po-step.error');
           existingErrors.forEach(el => el.remove());
@@ -1351,16 +1401,35 @@ function listenWizardProgress(id, url) {
 
       if (isPlaylist) {
         plContainer.classList.add('visible');
+        $('wizDlSpeed').textContent = '';
         // Clear stale error divs when new progress arrives
         if (stage !== 'error') {
           $('wizProgressSteps').querySelectorAll('.po-step.error').forEach(el => el.remove());
         }
         if (data.item && data.total) {
           updatePlaylistItem(plContainer, data);
+          // Update overall progress bar from playlist items
+          const doneItems = plContainer.querySelectorAll('.pl-item.done').length;
+          const downloadingItems = plContainer.querySelectorAll('.pl-item.downloading').length;
+          const visibleItems = doneItems + downloadingItems;
+          if (visibleItems > 1) {
+            const overallPct = Math.round(((doneItems) / Math.max(data.total, doneItems)) * 100);
+            $('wizProgressBar').style.width = Math.min(overallPct, 100) + '%';
+            $('wizProgressDetail').textContent = `Item ${data.item} of ${data.total} \u00B7 ${doneItems} completed`;
+          }
         }
         if (stage === 'file_complete' && data.file) {
           const fname = data.file.split('\\').pop().split('/').pop();
           addPlaylistItemDone(plContainer, fname);
+        }
+        if (stage === 'playlist_progress' && data.item && data.total) {
+          const doneItems = plContainer.querySelectorAll('.pl-item.done').length;
+          $('wizProgressDetail').textContent = `Item ${data.item} of ${data.total} \u00B7 ${doneItems} done \u00B7 ${data.speed || ''}`;
+          $('wizDlSize').textContent = (data.progress !== undefined ? Math.round(data.progress) + '%' : '');
+        }
+        if (stage === 'playlist_start') {
+          plContainer.innerHTML = '';
+          $('wizProgressDetail').textContent = 'Fetching playlist items...';
         }
       }
 
@@ -1413,6 +1482,7 @@ function listenWizardProgress(id, url) {
           $('wizPlRange').classList.remove('visible');
           loadDlHistory();
         }, 1500);
+        state.playlistEntries = [];
       } else if (stage === 'error') {
         state.currentDlId = null;
         setTimeout(() => {
@@ -1420,6 +1490,7 @@ function listenWizardProgress(id, url) {
           hideWizardProgress();
           wizGoTo(3);
         }, 1500);
+        state.playlistEntries = [];
       }
     } catch(_) {}
   };
@@ -1434,21 +1505,44 @@ function listenWizardProgress(id, url) {
 function updatePlaylistItem(container, data) {
   let item = container.querySelector(`.pl-item[data-item="${data.item}"]`);
   if (!item) {
+    const entry = state.playlistEntries[data.item - 1];
+    const title = entry ? entry.title : `Item ${data.item}`;
+    const shortTitle = title.length > 35 ? title.substring(0, 32) + '...' : title;
     item = document.createElement('div');
-    item.className = 'pl-item downloading';
+    item.className = 'pl-item entering';
     item.dataset.item = data.item;
-    item.style.animationDelay = (data.item * 0.05) + 's';
     item.innerHTML = `<div class="pli-num">${data.item}</div>
-      <div class="pli-title">Item ${data.item} of ${data.total}</div>
+      <div class="pli-title" title="${escapeHtml(title)}">${escapeHtml(shortTitle)}</div>
       <div class="pli-bar"><div class="fill"></div></div>
-      <div class="pli-status">${data.progress ? Math.round(data.progress) + '%' : '0%'}</div>`;
+      <div class="pli-size"></div>
+      <div class="pli-status">0%</div>`;
     container.appendChild(item);
+    requestAnimationFrame(() => {
+      item.classList.remove('entering');
+      item.classList.add('downloading');
+    });
   }
   const fill = item.querySelector('.fill');
   const status = item.querySelector('.pli-status');
+  const sizeEl = item.querySelector('.pli-size');
   if (fill && data.progress !== undefined) fill.style.width = Math.min(data.progress, 100) + '%';
   if (status && data.progress !== undefined) status.textContent = Math.round(data.progress) + '%';
-  if (data.speed) item.querySelector('.pli-title').textContent = `Item ${data.item} - ${data.speed}`;
+  if (data.speed) {
+    const titleEl = item.querySelector('.pli-title');
+    if (titleEl && !titleEl.dataset.orig) titleEl.dataset.orig = titleEl.textContent;
+    const titleBase = titleEl.dataset.orig || titleEl.textContent;
+    const shortBase = titleBase.length > 20 ? titleBase.substring(0, 17) + '...' : titleBase;
+    titleEl.textContent = `${shortBase} \u00B7 ${data.speed}`;
+  }
+  if (data.message) {
+    const sizeMatch = data.message.match(/([\d.]+[KMG]?i?B)\s+of\s+([\d.]+[KMG]?i?B)/);
+    if (sizeMatch && sizeEl) sizeEl.textContent = sizeMatch[1] + ' / ' + sizeMatch[2];
+    const etaMatch = data.message.match(/ETA\s+(\d+:\d+)/);
+    if (etaMatch && status) {
+      const pctText = status.textContent;
+      status.textContent = pctText + ' \u00B7 ' + etaMatch[1];
+    }
+  }
 }
 
 function addPlaylistItemDone(container, fname) {
@@ -1457,9 +1551,16 @@ function addPlaylistItemDone(container, fname) {
   if (lastItem) {
     lastItem.classList.remove('downloading');
     lastItem.classList.add('done');
-    lastItem.querySelector('.pli-bar .fill').style.width = '100%';
-    lastItem.querySelector('.pli-status').textContent = '\u2713';
-    lastItem.querySelector('.pli-title').textContent = fname.length > 30 ? fname.substring(0, 27) + '...' : fname;
+    const fill = lastItem.querySelector('.pli-bar .fill');
+    if (fill) fill.style.width = '100%';
+    const statusEl = lastItem.querySelector('.pli-status');
+    if (statusEl) statusEl.textContent = '\u2713';
+    const titleOriginal = lastItem.querySelector('.pli-title')?.dataset.orig;
+    if (titleOriginal) {
+      const displayName = fname.length > 30 ? fname.substring(0, 27) + '...' : fname;
+      lastItem.querySelector('.pli-title').textContent = displayName;
+      lastItem.querySelector('.pli-title').title = displayName;
+    }
   }
 }
 
@@ -1696,6 +1797,16 @@ $('updateYtdlpBtn').addEventListener('click', async () => {
 $('folderBtn').addEventListener('click', async () => {
   await api('/api/open-folder', { method: 'POST' });
 });
+
+/* ── Playlist Entry Fetching ── */
+async function fetchPlaylistEntries(url) {
+  try {
+    const res = await api('/api/info', { method: 'POST', body: JSON.stringify({ url }) });
+    if (res && res.isPlaylist && res.entries) {
+      state.playlistEntries = res.entries;
+    }
+  } catch (_) {}
+}
 
 /* ── Utils ── */
 function escapeHtml(str) {
