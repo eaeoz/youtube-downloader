@@ -21,6 +21,7 @@ if (!fs.existsSync(DEFAULT_DOWNLOADS_DIR)) fs.mkdirSync(DEFAULT_DOWNLOADS_DIR, {
 
 const downloadEmitters = {};
 const downloadProcs = {};
+const playlistDirs = {};
 let downloadIdCounter = 0;
 
 app.use(cors());
@@ -411,7 +412,7 @@ app.post('/api/download', async (req, res) => {
 });
 
 app.post('/api/download-playlist', async (req, res) => {
-  const { url, format, audioOnly } = req.body;
+  const { url, format, audioOnly, startIndex, endIndex } = req.body;
   if (!url) return res.status(400).json({ error: 'URL required' });
 
   const id = `pl-${++downloadIdCounter}-${Date.now()}`;
@@ -433,6 +434,9 @@ app.post('/api/download-playlist', async (req, res) => {
         '--progress',
         '--print', 'after_move:filepath'
       ];
+
+      if (startIndex) baseArgs.push('--playlist-start', parseInt(startIndex));
+      if (endIndex) baseArgs.push('--playlist-end', parseInt(endIndex));
 
       const outputTemplate = path.join(dlDir, '%(playlist_title)s_pl/%(playlist_index)s - %(title)s.%(ext)s');
       const tempTemplate = path.join(dlDir, 'temp_%(id)s.%(ext)s');
@@ -463,6 +467,12 @@ app.post('/api/download-playlist', async (req, res) => {
       proc.stdout.on('data', (data) => {
         const text = data.toString().trim();
         if (text) {
+          if (!playlistDirs[id]) {
+            const dir = path.dirname(text);
+            if (fs.existsSync(dir)) {
+              playlistDirs[id] = dir;
+            }
+          }
           emitter.emit('progress', { stage: 'file_complete', message: `Completed: ${text}`, file: text });
         }
       });
@@ -506,6 +516,15 @@ app.post('/api/download-playlist', async (req, res) => {
           }
 
           if (line.includes('[download]') && line.includes('Destination')) {
+            if (!playlistDirs[id]) {
+              const destMatch = line.match(/Destination:\s*(.+)/i);
+              if (destMatch) {
+                const dir = path.dirname(destMatch[1].trim());
+                if (fs.existsSync(dir)) {
+                  playlistDirs[id] = dir;
+                }
+              }
+            }
             emitter.emit('progress', { stage: 'destination', message: line.trim() });
             continue;
           }
@@ -516,6 +535,7 @@ app.post('/api/download-playlist', async (req, res) => {
 
       proc.on('close', (code) => {
         delete downloadProcs[id];
+        delete playlistDirs[id];
         if (code === 0) {
           emitter.emit('progress', { stage: 'done', message: 'Playlist download complete!', progress: 100 });
         } else {
@@ -526,6 +546,7 @@ app.post('/api/download-playlist', async (req, res) => {
 
       proc.on('error', (e) => {
         delete downloadProcs[id];
+        delete playlistDirs[id];
         emitter.emit('progress', { stage: 'error', message: e.message });
         setTimeout(() => delete downloadEmitters[id], 5000);
       });
@@ -586,6 +607,14 @@ app.post('/api/cancel/:id', (req, res) => {
     delete downloadProcs[id];
   }
   const dlDir = getDownloadsDir();
+  if (playlistDirs[id]) {
+    try {
+      if (fs.existsSync(playlistDirs[id])) {
+        fs.rmSync(playlistDirs[id], { recursive: true, force: true });
+      }
+    } catch (_) {}
+    delete playlistDirs[id];
+  }
   try {
     const entries = fs.readdirSync(dlDir, { withFileTypes: true });
     for (const entry of entries) {

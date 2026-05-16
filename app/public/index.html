@@ -216,6 +216,48 @@ body{
 .url-row .dl-btn:active{transform:scale(0.97)}
 .url-row .dl-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
 
+/* ── Playlist Range Input ── */
+.pl-range-wrap{
+  display:flex;align-items:center;gap:8px;
+  overflow:hidden;
+  max-height:0;opacity:0;
+  padding:0 0;
+  transition:max-height 0.45s cubic-bezier(0.4,0,0.2,1), opacity 0.35s ease, padding 0.35s ease, margin 0.35s ease;
+  margin:0;
+}
+.pl-range-wrap.visible{
+  max-height:40px;opacity:1;
+  padding:4px 0;
+  margin:2px 0 4px;
+}
+.pl-range-label{
+  font-size:12px;color:var(--text3);font-weight:500;white-space:nowrap;
+}
+.pl-range-input{
+  width:56px;padding:5px 8px;
+  border-radius:var(--radius-xs);
+  border:2px solid var(--border);
+  background:var(--bg2);
+  color:var(--text);
+  font-size:13px;outline:none;text-align:center;
+  font-family:inherit;
+  transition:all var(--transition);
+  -moz-appearance:textfield;
+}
+.pl-range-input::-webkit-outer-spin-button,
+.pl-range-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.pl-range-input:focus{border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-glow)}
+.pl-range-input::placeholder{color:var(--text3);font-size:11px}
+.pl-range-arrow{
+  font-size:16px;color:var(--primary);
+  display:flex;align-items:center;
+  animation:rangeArrow 1.2s ease-in-out infinite;
+}
+@keyframes rangeArrow{
+  0%,100%{transform:translateX(0);opacity:0.3}
+  50%{transform:translateX(5px);opacity:1}
+}
+
 /* ── Paste Hint ── */
 .paste-hint{
   font-size:11px;color:var(--text3);text-align:center;
@@ -798,6 +840,13 @@ body{
   <div class="sub-panel active" id="panel1080p">
     <div class="panel-title"><i class="fas fa-download"></i> Download 1080p Video</div>
     <div class="panel-desc">Download the highest quality Full HD video (1080p) merged with best audio.</div>
+    <div class="pl-range-wrap">
+      <span class="pl-range-label">From</span>
+      <input type="number" class="pl-range-input pl-range-start" placeholder="1" min="1">
+      <span class="pl-range-arrow"><i class="fas fa-arrow-right"></i></span>
+      <input type="number" class="pl-range-input pl-range-end" placeholder="∞" min="1">
+      <span class="pl-range-label">To</span>
+    </div>
     <div class="url-row">
       <input type="text" class="popularUrlInput" placeholder="Paste YouTube URL here..." autocomplete="off" spellcheck="false">
       <button class="dl-btn popularDlBtn" data-format="1080p"><i class="fas fa-download"></i> Download</button>
@@ -808,6 +857,13 @@ body{
   <div class="sub-panel" id="panel720p">
     <div class="panel-title"><i class="fas fa-download"></i> Download 720p Video</div>
     <div class="panel-desc">Download HD video (720p) merged with best audio - smaller file size.</div>
+    <div class="pl-range-wrap">
+      <span class="pl-range-label">From</span>
+      <input type="number" class="pl-range-input pl-range-start" placeholder="1" min="1">
+      <span class="pl-range-arrow"><i class="fas fa-arrow-right"></i></span>
+      <input type="number" class="pl-range-input pl-range-end" placeholder="∞" min="1">
+      <span class="pl-range-label">To</span>
+    </div>
     <div class="url-row">
       <input type="text" class="popularUrlInput" placeholder="Paste YouTube URL here..." autocomplete="off" spellcheck="false">
       <button class="dl-btn popularDlBtn" data-format="720p"><i class="fas fa-download"></i> Download</button>
@@ -818,6 +874,13 @@ body{
   <div class="sub-panel" id="panelmp3">
     <div class="panel-title"><i class="fas fa-music"></i> Download MP3 Audio</div>
     <div class="panel-desc">Extract and download high-quality audio as MP3 from any YouTube video.</div>
+    <div class="pl-range-wrap">
+      <span class="pl-range-label">From</span>
+      <input type="number" class="pl-range-input pl-range-start" placeholder="1" min="1">
+      <span class="pl-range-arrow"><i class="fas fa-arrow-right"></i></span>
+      <input type="number" class="pl-range-input pl-range-end" placeholder="∞" min="1">
+      <span class="pl-range-label">To</span>
+    </div>
     <div class="url-row">
       <input type="text" class="popularUrlInput" placeholder="Paste YouTube URL here..." autocomplete="off" spellcheck="false">
       <button class="dl-btn popularDlBtn" data-format="mp3"><i class="fas fa-download"></i> Download</button>
@@ -950,6 +1013,13 @@ function updatePlaylistToggleUI() {
     btn.classList.add('pl-off');
     btn.classList.remove('pl-on');
   }
+  document.querySelectorAll('.pl-range-wrap').forEach(el => {
+    if (state.playlistMode) {
+      el.classList.add('visible');
+    } else {
+      el.classList.remove('visible');
+    }
+  });
   localStorage.setItem('yd-playlist-mode', state.playlistMode ? '1' : '0');
 }
 const savedPlaylistMode = localStorage.getItem('yd-playlist-mode');
@@ -1473,6 +1543,21 @@ async function startPopularDownload(url, format) {
   ov.querySelector('[data-step="start"]')?.classList.add('active');
 
   const payload = { url, format, audioOnly: isAudio };
+
+  if (isPlaylist) {
+    const panel = document.querySelector('.sub-panel.active');
+    const startInput = panel?.querySelector('.pl-range-start');
+    const endInput = panel?.querySelector('.pl-range-end');
+    if (startInput) {
+      const s = parseInt(startInput.value);
+      if (!isNaN(s) && s > 0) payload.startIndex = s;
+    }
+    if (endInput) {
+      const e = parseInt(endInput.value);
+      if (!isNaN(e) && e > 0) payload.endIndex = e;
+    }
+  }
+
   const endpoint = isPlaylist ? '/api/download-playlist' : '/api/download';
 
   const res = await api(endpoint, { method: 'POST', body: JSON.stringify(payload) });
