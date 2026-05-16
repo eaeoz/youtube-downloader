@@ -2,6 +2,9 @@
   "name": "youtube-downloader",
   "version": "1.0.0",
   "description": "Modern YouTube downloader with wizard & quick download modes",
+  "homepage": "https://github.com/eaeoz/youtube-downloader",
+  "repository": "github:eaeoz/youtube-downloader",
+  "bugs": "https://github.com/eaeoz/youtube-downloader/issues",
   "main": "app/main.js",
   "author": {
     "name": "Sedat Ergoz",
