@@ -780,10 +780,17 @@ let dlEventSource = null;
 
 async function api(url, opts = {}) {
   try {
-    const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30000);
+    const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, signal: controller.signal, ...opts });
+    clearTimeout(timer);
     const text = await res.text();
     return text ? JSON.parse(text) : null;
-  } catch (e) { showToast(e.message, 'error'); return null; }
+  } catch (e) {
+    if (e.name === 'AbortError') showToast('Request timed out', 'error');
+    else showToast(e.message, 'error');
+    return null;
+  }
 }
 
 function showToast(msg, type = 'success') {
@@ -990,6 +997,7 @@ async function wizFetchFormats() {
 
   $('wizFormatOutput').innerHTML = '<div class="fmt-loading"><div class="spinner"></div> Fetching available formats...</div>';
   $('wizStep2Next').disabled = true;
+  $('wizDownloadBtn').disabled = true;
   $('wizFormatCode').innerHTML = '<option value="best">best (auto)</option>';
   $('wizFormatCode').value = 'best';
   $('fmtLoader').classList.add('visible');
@@ -999,6 +1007,9 @@ async function wizFetchFormats() {
     const res = await api('/api/list-formats', { method: 'POST', body: JSON.stringify({ url }) });
     if (!res || !res.id) {
       $('wizFormatOutput').innerHTML = '<div class="fmt-line fmt-error">Failed to start format listing</div>';
+      $('wizFormatOutput').style.display = '';
+      document.querySelector('.fmt-row').style.display = '';
+      $('wizDownloadBtn').disabled = false;
       $('fmtLoader').classList.remove('visible');
       $('wizStep2Next').disabled = false;
       return;
@@ -1009,24 +1020,38 @@ async function wizFetchFormats() {
     let formatOutput = '';
     let receivedDone = false;
 
+    const sseTimeout = setTimeout(() => {
+      if (!receivedDone) {
+        cleanupEventSource();
+        $('wizFormatOutput').innerHTML = '<div class="fmt-line fmt-error">Request timed out. Check yt-dlp status.</div>';
+        $('wizFormatOutput').style.display = '';
+        document.querySelector('.fmt-row').style.display = '';
+        $('wizDownloadBtn').disabled = false;
+        $('fmtLoader').classList.remove('visible');
+        $('wizStep2Next').disabled = false;
+      }
+    }, 120000);
+
     dlEventSource = new EventSource('/api/download/progress/' + res.id);
     dlEventSource.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
         if (data.stage === 'formats') {
           formatOutput += data.message + '\n';
-          const html = formatOutput.split('\n').map(l => {
-            if (l.startsWith('[')) return `<div class="fmt-line fmt-info">${escapeHtml(l)}</div>`;
-            if (l.match(/^\d+/)) {
-              if (isAudioMode && !l.includes('audio only')) return '';
-              if (!isAudioMode && l.includes('audio only')) return '';
-              return `<div class="fmt-line clickable" data-fmt="${escapeHtml(l.match(/^(\S+)/)[1])}">${escapeHtml(l)}</div>`;
-            }
-            if (l.startsWith('ID') || l.startsWith('--')) return `<div class="fmt-line fmt-header">${escapeHtml(l)}</div>`;
-            return `<div class="fmt-line">${escapeHtml(l)}</div>`;
-          }).join('');
-          $('wizFormatOutput').innerHTML = html;
-          $('wizFormatOutput').scrollTop = $('wizFormatOutput').scrollHeight;
+          const line = data.message;
+          let html = '';
+          if (line.startsWith('[')) html = `<div class="fmt-line fmt-info">${escapeHtml(line)}</div>`;
+          else if (line.match(/^\d+/)) {
+            if (isAudioMode && !line.includes('audio only')) html = '';
+            else if (!isAudioMode && line.includes('audio only')) html = '';
+            else html = `<div class="fmt-line clickable" data-fmt="${escapeHtml(line.match(/^(\S+)/)[1])}">${escapeHtml(line)}</div>`;
+          }
+          else if (line.startsWith('ID') || line.startsWith('--')) html = `<div class="fmt-line fmt-header">${escapeHtml(line)}</div>`;
+          else html = `<div class="fmt-line">${escapeHtml(line)}</div>`;
+          if (html) {
+            $('wizFormatOutput').insertAdjacentHTML('beforeend', html);
+            $('wizFormatOutput').scrollTop = $('wizFormatOutput').scrollHeight;
+          }
         } else if (data.stage === 'formats_done') {
           receivedDone = true;
           state.wizFormats = data.fullOutput || formatOutput;
@@ -1062,26 +1087,39 @@ async function wizFetchFormats() {
             $('wizFormatCode').value = state.bestAudioFmt;
             updateWizBitrateHint();
           }
+          $('wizDownloadBtn').disabled = false;
           $('wizStep2Next').disabled = false;
+          clearTimeout(sseTimeout);
           cleanupEventSource();
 
           fetchAudioBitratesFromJson();
         } else if (data.stage === 'error') {
           $('wizFormatOutput').innerHTML += `<div class="fmt-line fmt-error">${escapeHtml(data.message)}</div>`;
+          $('wizFormatOutput').style.display = '';
+          document.querySelector('.fmt-row').style.display = '';
+          $('wizDownloadBtn').disabled = false;
           $('fmtLoader').classList.remove('visible');
           $('wizStep2Next').disabled = false;
+          clearTimeout(sseTimeout);
           cleanupEventSource();
         }
       } catch(_) {}
     };
     dlEventSource.onerror = () => {
       if (!receivedDone) {
+        $('wizFormatOutput').style.display = '';
+        document.querySelector('.fmt-row').style.display = '';
+        $('wizDownloadBtn').disabled = false;
         $('fmtLoader').classList.remove('visible');
         $('wizStep2Next').disabled = false;
+        clearTimeout(sseTimeout);
         cleanupEventSource();
       }
     };
   } catch (e) {
+    $('wizFormatOutput').style.display = '';
+    document.querySelector('.fmt-row').style.display = '';
+    $('wizDownloadBtn').disabled = false;
     $('fmtLoader').classList.remove('visible');
     $('wizFormatOutput').innerHTML = `<div class="fmt-line fmt-error">Error: ${escapeHtml(e.message)}</div>`;
     $('wizStep2Next').disabled = false;

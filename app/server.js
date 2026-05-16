@@ -83,7 +83,8 @@ function ensureFfmpeg() {
   } catch (e) { console.warn('[ffmpeg] ffprobe-static not available:', e.message); }
   return binDir;
 }
-const FFMPEG_DIR = ensureFfmpeg();
+let FFMPEG_DIR = BIN_PATH;
+process.nextTick(() => { FFMPEG_DIR = ensureFfmpeg(); });
 
 function sanitize(str) {
   return str.replace(/[<>:"/\\|?*]/g, '').trim();
@@ -240,36 +241,59 @@ app.post('/api/list-formats', async (req, res) => {
 
   res.json({ id });
 
+  const done = (stage, data) => {
+    emitter.emit('progress', { ...data, stage });
+    setTimeout(() => delete downloadEmitters[id], 2000);
+  };
+
   process.nextTick(async () => {
     try {
       const ytPath = getYtdlpPath();
-      emitter.emit('progress', { stage: 'formats', message: `Fetching formats for: ${url}`, formats: [] });
+      done('formats', { message: `Fetching formats for: ${url}`, formats: [] });
 
       const proc = spawn(ytPath, ['--list-formats', url, '--no-warnings'], {
         stdio: ['pipe', 'pipe', 'pipe'],
         windowsHide: true
       });
-      let output = '';
-      let errorOut = '';
 
-      proc.stdout.on('data', (d) => { output += d.toString(); });
-      proc.stderr.on('data', (d) => { errorOut += d.toString(); });
+      const timeout = setTimeout(() => {
+        try { proc.kill(); } catch (_) {}
+        done('error', { message: 'yt-dlp timed out (60s). Check your network or yt-dlp version.' });
+      }, 60000);
+
+      let fullOutput = '';
+      let lineBuf = '';
+
+      proc.stdout.on('data', (d) => {
+        const chunk = d.toString();
+        fullOutput += chunk;
+        lineBuf += chunk;
+        const lines = lineBuf.split('\n');
+        lineBuf = lines.pop() || '';
+        for (const line of lines) {
+          if (line.trim()) done('formats', { message: line.trim() });
+        }
+      });
+
+      proc.stderr.on('data', (d) => { fullOutput += d.toString(); });
 
       proc.on('close', async (code) => {
-        const fullOutput = output + errorOut;
-        const lines = fullOutput.split('\n').filter(l => l.trim());
-        for (const line of lines) {
-          emitter.emit('progress', { stage: 'formats', message: line });
+        clearTimeout(timeout);
+        if (lineBuf.trim()) done('formats', { message: lineBuf.trim() });
+        if (code !== 0 && !fullOutput.trim()) {
+          done('error', { message: `yt-dlp exited with code ${code}. Ensure yt-dlp is working.` });
+          return;
         }
         const fmtData = parseAudioBitrates(fullOutput);
-        emitter.emit('progress', { stage: 'formats_done', message: 'Format listing complete', fullOutput, fmtData });
+        done('formats_done', { message: 'Format listing complete', fullOutput, fmtData });
       });
 
       proc.on('error', (e) => {
-        emitter.emit('progress', { stage: 'error', message: e.message });
+        clearTimeout(timeout);
+        done('error', { message: `Failed to start yt-dlp: ${e.message}` });
       });
     } catch (e) {
-      emitter.emit('progress', { stage: 'error', message: e.message });
+      done('error', { message: e.message });
     }
   });
 });
@@ -813,8 +837,47 @@ app.get('/api/ytdlp-status', (req, res) => {
   res.json({ exists, version });
 });
 
-const server = app.listen(PORT, () => {
+async function ensureYtdlpDownload() {
+  const binDir = BIN_PATH;
+  const outputPath = path.join(binDir, 'yt-dlp.exe');
+  if (fs.existsSync(outputPath)) {
+    const stat = fs.statSync(outputPath);
+    if (stat.size > 1000000) return;
+  }
+  if (!fs.existsSync(binDir)) fs.mkdirSync(binDir, { recursive: true });
+  console.log('yt-dlp.exe not found or too small, downloading...');
+  try {
+    const https = require('https');
+    const url = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe';
+    await new Promise((resolve, reject) => {
+      const file = fs.createWriteStream(outputPath);
+      const request = https.get(url, (response) => {
+        if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+          file.close();
+          try { fs.unlinkSync(outputPath); } catch (_) {}
+          https.get(response.headers.location, (res2) => {
+            res2.pipe(file);
+            file.on('finish', () => { file.close(); resolve(); });
+          }).on('error', reject);
+          return;
+        }
+        response.pipe(file);
+        file.on('finish', () => { file.close(); resolve(); });
+      });
+      request.on('error', reject);
+    });
+    const stat = fs.statSync(outputPath);
+    if (stat.size > 1000000) console.log('yt-dlp.exe downloaded successfully (' + Math.round(stat.size / 1024 / 1024) + ' MB)');
+    else console.warn('yt-dlp.exe download may be incomplete (' + Math.round(stat.size / 1024) + ' KB)');
+  } catch (e) {
+    console.error('Failed to download yt-dlp.exe:', e.message);
+    console.log('Place yt-dlp.exe manually in: ' + binDir);
+  }
+}
+
+const server = app.listen(PORT, async () => {
   console.log(`YouTube Downloader running at http://localhost:${PORT}`);
+  await ensureYtdlpDownload();
 });
 
 module.exports = { app, server };
