@@ -1092,7 +1092,7 @@ async function wizFetchFormats() {
           clearTimeout(sseTimeout);
           cleanupEventSource();
 
-          fetchAudioBitratesFromJson();
+          if (!data.fmtData) fetchAudioBitratesFromJson();
         } else if (data.stage === 'error') {
           $('wizFormatOutput').innerHTML += `<div class="fmt-line fmt-error">${escapeHtml(data.message)}</div>`;
           $('wizFormatOutput').style.display = '';
