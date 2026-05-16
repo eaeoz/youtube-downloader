@@ -1016,19 +1016,43 @@ async function wizFetchFormats() {
 
           const select = $('wizFormatCode');
           select.innerHTML = '<option value="best">best (auto)</option>';
-          const fmtLines = (data.fullOutput || formatOutput).split('\n');
-          for (const l of fmtLines) {
-            const m = l.match(/^\s*(\S+)\s/);
-            if (!m) continue;
-            const id = m[1];
-            if (!/^\d+/.test(id)) continue;
-            const isAudioLine = l.includes('audio only');
-            if (isAudioMode && !isAudioLine) continue;
-            if (!isAudioMode && isAudioLine) continue;
-            const label = l.trim().split(/\s+/).slice(0, 6).join(' ');
+
+          // Parse per-video format sections, compute intersection of format IDs
+          const fullOut = data.fullOutput || formatOutput;
+          const sections = fullOut.split(/\n(?=\[info\] Available formats for [^:]+:)/);
+          const perVideoSets = [];
+          const idToLabel = {};
+          for (const section of sections) {
+            if (!section.includes('Available formats for')) continue;
+            const lines = section.split('\n').filter(l => l.trim());
+            const fmtIds = new Set();
+            for (const line of lines) {
+              const m = line.match(/^\s*(\d+)\s/);
+              if (!m) continue;
+              const id = m[1];
+              if (isAudioMode && !line.includes('audio only')) continue;
+              if (!isAudioMode && line.includes('audio only')) continue;
+              fmtIds.add(id);
+              if (!idToLabel[id]) {
+                const label = line.trim().split(/\s+/).slice(0, 6).join(' ');
+                idToLabel[id] = `${id} - ${label}`;
+              }
+            }
+            if (fmtIds.size > 0) perVideoSets.push(fmtIds);
+          }
+
+          // Union: all unique format IDs across all videos
+          const allIds = new Set();
+          for (const set of perVideoSets) {
+            for (const id of set) allIds.add(id);
+          }
+
+          // Populate dropdown with all formats (sorted numerically)
+          const sorted = [...allIds].sort((a, b) => parseInt(a) - parseInt(b));
+          for (const id of sorted) {
             const opt = document.createElement('option');
             opt.value = id;
-            opt.textContent = `${id} - ${label}`;
+            opt.textContent = idToLabel[id] || id;
             select.appendChild(opt);
           }
 
