@@ -272,6 +272,26 @@ body{
 .fmt-row select:focus{border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-glow)}
 .fmt-row select option{font-size:12px;padding:2px 4px}
 
+/* ── Format Loading Line ── */
+.fmt-loader{
+  text-align:center;font-size:13px;font-weight:600;
+  color:var(--primary);padding:6px 0;min-height:16px;
+  display:none;
+  animation:fadeIn 0.2s ease;
+}
+.fmt-loader.visible{display:block}
+.fmt-loader::after{
+  content:'';display:block;margin:4px auto 0;
+  width:60%;height:2px;border-radius:1px;
+  background:linear-gradient(90deg,transparent,var(--primary),var(--primary-glow),var(--primary),transparent);
+  background-size:200% 100%;
+  animation:loaderSlide 1.2s ease-in-out infinite;
+}
+@keyframes loaderSlide{
+  0%{background-position:-200% 0}
+  100%{background-position:200% 0}
+}
+
 /* ── Playlist Range Input ── */
 .pl-range-wrap{
   display:flex;align-items:center;gap:8px;
@@ -646,6 +666,7 @@ body{
         <input type="number" class="pl-range-input pl-range-end" placeholder="∞" min="1">
         <span class="pl-range-label">To</span>
       </div>
+      <div class="fmt-loader" id="fmtLoader">Loading...</div>
       <div class="fmt-row">
         <select class="wizard-input" id="wizFormatCode" style="cursor:pointer;flex:1;width:auto">
           <option value="best">best (auto)</option>
@@ -970,12 +991,14 @@ async function wizFetchFormats() {
   $('wizStep2Next').disabled = true;
   $('wizFormatCode').innerHTML = '<option value="best">best (auto)</option>';
   $('wizFormatCode').value = 'best';
+  $('fmtLoader').classList.add('visible');
   wizGoTo(3);
 
   try {
     const res = await api('/api/list-formats', { method: 'POST', body: JSON.stringify({ url }) });
     if (!res || !res.id) {
       $('wizFormatOutput').innerHTML = '<div class="fmt-line fmt-error">Failed to start format listing</div>';
+      $('fmtLoader').classList.remove('visible');
       $('wizStep2Next').disabled = false;
       return;
     }
@@ -1032,6 +1055,7 @@ async function wizFetchFormats() {
             opts.push(`<option value="${id}">${escapeHtml(idToLabel[id] || id)}</option>`);
           }
           $('wizFormatCode').innerHTML = opts.join('');
+          setTimeout(() => { $('fmtLoader').classList.remove('visible'); }, 800);
 
           if (state.wizType === 'audio' && state.bestAudioFmt) {
             $('wizFormatCode').value = state.bestAudioFmt;
@@ -1043,6 +1067,7 @@ async function wizFetchFormats() {
           fetchAudioBitratesFromJson();
         } else if (data.stage === 'error') {
           $('wizFormatOutput').innerHTML += `<div class="fmt-line fmt-error">${escapeHtml(data.message)}</div>`;
+          $('fmtLoader').classList.remove('visible');
           $('wizStep2Next').disabled = false;
           cleanupEventSource();
         }
@@ -1050,11 +1075,13 @@ async function wizFetchFormats() {
     };
     dlEventSource.onerror = () => {
       if (!receivedDone) {
+        $('fmtLoader').classList.remove('visible');
         $('wizStep2Next').disabled = false;
         cleanupEventSource();
       }
     };
   } catch (e) {
+    $('fmtLoader').classList.remove('visible');
     $('wizFormatOutput').innerHTML = `<div class="fmt-line fmt-error">Error: ${escapeHtml(e.message)}</div>`;
     $('wizStep2Next').disabled = false;
   }
