@@ -171,7 +171,7 @@ app.post('/api/info', async (req, res) => {
   try {
     const ytPath = getYtdlpPath();
     const isPlaylist_ = isPlaylist(url);
-    const args = ['--dump-json', '--no-warnings', '--flat-playlist'];
+    const args = ['--dump-json', '--no-warnings', '--flat-playlist', '--extractor-args', 'youtube:player_client=android'];
     if (isPlaylist_) args.push('--flat-playlist');
     args.push(url);
 
@@ -245,7 +245,7 @@ app.post('/api/list-formats', async (req, res) => {
       const ytPath = getYtdlpPath();
       emitter.emit('progress', { stage: 'formats', message: `Fetching formats for: ${url}`, formats: [] });
 
-      const proc = spawn(ytPath, ['--list-formats', url, '--no-warnings'], {
+      const proc = spawn(ytPath, ['--list-formats', url, '--no-warnings', '--extractor-args', 'youtube:player_client=android'], {
         stdio: ['pipe', 'pipe', 'pipe'],
         windowsHide: true
       });
@@ -335,8 +335,7 @@ app.post('/api/download', async (req, res) => {
         '--newline',
         '--progress',
         '-o', path.join(dlDir, isPlaylist_ ? '%(playlist_title)s' : '%(title)s') + `_${id}` + (isPlaylist_ ? '/%(playlist_index)s - %(title)s.%(ext)s' : '.%(ext)s'),
-        '--print', 'after_move:filepath',
-        '--extractor-args', 'youtube:player_client=android,web'
+        '--print', 'after_move:filepath'
       ];
 
       if (formatCode && formatCode !== 'best') {
@@ -346,14 +345,10 @@ app.post('/api/download', async (req, res) => {
         } else {
           baseArgs.push('-f', formatCode, '--merge-output-format', 'mp4');
         }
-      } else if (format === '1080p') {
-        baseArgs.push('-f', 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]', '--merge-output-format', 'mp4');
-      } else if (format === '720p') {
-        baseArgs.push('-f', 'bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]', '--merge-output-format', 'mp4');
       } else if (isAudio) {
         baseArgs.push('-x', '--audio-format', 'mp3', '--audio-quality', ab > 0 ? ab + 'k' : '0');
       } else {
-        baseArgs.push('-f', 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]', '--merge-output-format', 'mp4');
+        baseArgs.push('-f', 'bestvideo+bestaudio/best', '--merge-output-format', 'mp4');
       }
 
       baseArgs.push(url);
@@ -413,7 +408,7 @@ app.post('/api/download', async (req, res) => {
 });
 
 app.post('/api/download-playlist', async (req, res) => {
-  const { url, format, audioOnly, startIndex, endIndex } = req.body;
+  const { url, format, audioOnly, formatCode, audioBitrate, startIndex, endIndex } = req.body;
   if (!url) return res.status(400).json({ error: 'URL required' });
 
   const id = `pl-${++downloadIdCounter}-${Date.now()}`;
@@ -435,7 +430,7 @@ app.post('/api/download-playlist', async (req, res) => {
         '--progress',
         '--print', 'after_move:filepath',
         '--ignore-errors',
-        '--extractor-args', 'youtube:player_client=android,web'
+        '--extractor-args', 'youtube:player_client=android'
       ];
 
       if (startIndex) baseArgs.push('--playlist-start', parseInt(startIndex));
@@ -445,16 +440,13 @@ app.post('/api/download-playlist', async (req, res) => {
       const tempTemplate = path.join(dlDir, 'temp_%(id)s.%(ext)s');
 
       if (audioOnly) {
-        baseArgs.push('-x', '--audio-format', 'mp3', '--audio-quality', '0');
-        baseArgs.push('-o', outputTemplate);
-      } else if (format === '1080p') {
-        baseArgs.push('-f', 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]', '--merge-output-format', 'mp4');
-        baseArgs.push('-o', outputTemplate);
-      } else if (format === '720p') {
-        baseArgs.push('-f', 'bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]', '--merge-output-format', 'mp4');
+        baseArgs.push('-x', '--audio-format', 'mp3');
+        const ab = parseInt(audioBitrate) || 0;
+        baseArgs.push('--audio-quality', ab > 0 ? Math.min(ab, 320) + 'k' : '0');
         baseArgs.push('-o', outputTemplate);
       } else {
-        baseArgs.push('-f', 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]', '--merge-output-format', 'mp4');
+        const fmtCode = formatCode || 'bestvideo+bestaudio/best';
+        baseArgs.push('-f', fmtCode, '--merge-output-format', 'mp4');
         baseArgs.push('-o', outputTemplate);
       }
 

@@ -102,170 +102,6 @@ body{
 .top-btn.pl-off{border-color:var(--border);color:var(--text3)}
 .top-btn.pl-off:hover{background:var(--surface2);color:var(--text2)}
 
-/* ── Main Tabs ── */
-.main-tab-bar{
-  display:flex;gap:0;
-  background:var(--bg2);
-  border-bottom:1px solid var(--border);
-  padding:0 16px;
-  flex-shrink:0;
-  -webkit-app-region:no-drag;
-}
-.main-tab{
-  padding:12px 24px;
-  font-size:14px;font-weight:600;
-  color:var(--text3);
-  cursor:pointer;
-  border-bottom:2px solid transparent;
-  transition:all var(--transition);
-  position:relative;
-  display:flex;align-items:center;gap:8px;
-  background:none;border-top:none;border-left:none;border-right:none;
-  font-family:inherit;
-}
-.main-tab:hover{color:var(--text2)}
-.main-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
-.main-tab i{font-size:13px}
-.main-tab.active i{text-shadow:0 0 8px var(--primary-glow)}
-
-/* ── Tab Content ── */
-.tab-content{
-  flex:1;display:none;flex-direction:column;
-  overflow:hidden;
-  position:relative;
-}
-.tab-content.active{display:flex}
-
-/* ── Sub Tabs (Popular) ── */
-.sub-tab-bar{
-  display:flex;gap:4px;
-  padding:12px 16px 0;
-  flex-shrink:0;
-}
-.sub-tab{
-  padding:8px 18px;
-  font-size:13px;font-weight:500;
-  color:var(--text3);
-  cursor:pointer;
-  border-radius:var(--radius-sm) var(--radius-sm) 0 0;
-  background:var(--bg);
-  border:1px solid var(--border);
-  border-bottom:none;
-  transition:all var(--transition);
-  position:relative;
-  font-family:inherit;
-}
-.sub-tab:hover{color:var(--text2);background:var(--surface)}
-.sub-tab.active{
-  color:var(--primary);
-  background:var(--surface);
-  border-color:var(--border);
-}
-.sub-tab i{margin-right:6px;font-size:12px}
-
-/* ── Sub Tab Panels ── */
-.sub-panel{
-  display:none;flex:1;
-  padding:16px;
-  background:var(--surface);
-  border-top:1px solid var(--border);
-  flex-direction:column;
-  gap:14px;
-}
-.sub-panel.active{display:flex}
-
-.sub-panel .panel-title{
-  font-size:15px;font-weight:600;
-  display:flex;align-items:center;gap:8px;
-}
-.sub-panel .panel-title i{color:var(--primary)}
-.sub-panel .panel-desc{
-  font-size:12px;color:var(--text3);
-  line-height:1.5;
-}
-
-/* ── URL Input Row ── */
-.url-row{
-  display:flex;gap:8px;align-items:center;
-}
-.url-row input{
-  flex:1;
-  padding:12px 16px;
-  border-radius:var(--radius-sm);
-  border:2px solid var(--border);
-  background:var(--bg2);
-  color:var(--text);
-  font-size:14px;outline:none;
-  transition:all var(--transition);
-  font-family:inherit;
-}
-.url-row input:focus{border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-glow)}
-.url-row input::placeholder{color:var(--text3)}
-.url-row .dl-btn{
-  padding:12px 20px;
-  border-radius:var(--radius-sm);
-  border:none;
-  background:linear-gradient(135deg,var(--primary),#dc2626);
-  color:#fff;font-size:14px;font-weight:600;
-  cursor:pointer;transition:all var(--transition);
-  display:flex;align-items:center;gap:8px;
-  white-space:nowrap;
-  font-family:inherit;
-}
-.url-row .dl-btn:hover{transform:scale(1.03);box-shadow:0 4px 16px var(--primary-glow)}
-.url-row .dl-btn:active{transform:scale(0.97)}
-.url-row .dl-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
-
-/* ── Playlist Range Input ── */
-.pl-range-wrap{
-  display:flex;align-items:center;gap:8px;
-  overflow:hidden;
-  max-height:0;opacity:0;
-  padding:0 0;
-  transition:max-height 0.45s cubic-bezier(0.4,0,0.2,1), opacity 0.35s ease, padding 0.35s ease, margin 0.35s ease;
-  margin:0;
-}
-.pl-range-wrap.visible{
-  max-height:40px;opacity:1;
-  padding:4px 0;
-  margin:2px 0 4px;
-}
-.pl-range-label{
-  font-size:12px;color:var(--text3);font-weight:500;white-space:nowrap;
-}
-.pl-range-input{
-  width:56px;padding:5px 8px;
-  border-radius:var(--radius-xs);
-  border:2px solid var(--border);
-  background:var(--bg2);
-  color:var(--text);
-  font-size:13px;outline:none;text-align:center;
-  font-family:inherit;
-  transition:all var(--transition);
-  -moz-appearance:textfield;
-}
-.pl-range-input::-webkit-outer-spin-button,
-.pl-range-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.pl-range-input:focus{border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-glow)}
-.pl-range-input::placeholder{color:var(--text3);font-size:11px}
-.pl-range-arrow{
-  font-size:16px;color:var(--primary);
-  display:flex;align-items:center;
-  animation:rangeArrow 1.2s ease-in-out infinite;
-}
-@keyframes rangeArrow{
-  0%,100%{transform:translateX(0);opacity:0.3}
-  50%{transform:translateX(5px);opacity:1}
-}
-
-/* ── Paste Hint ── */
-.paste-hint{
-  font-size:11px;color:var(--text3);text-align:center;
-  opacity:0.5;
-  transition:opacity var(--transition);
-  min-height:16px;
-}
-
 /* ── Wizard ── */
 .wizard-container{
   flex:1;display:flex;flex-direction:column;
@@ -310,20 +146,6 @@ body{
   font-size:13px;color:var(--text3);
   line-height:1.5;
 }
-
-/* Wizard warning */
-.wizard-warning{
-  display:flex;align-items:center;gap:8px;
-  padding:10px 14px;
-  margin:8px 0;
-  border-radius:var(--radius);
-  background:rgba(251,191,36,0.15);
-  border:1px solid rgba(251,191,36,0.4);
-  color:var(--amber, #f59e0b);
-  font-size:13px;
-  line-height:1.4;
-}
-.wizard-warning i{font-size:14px;flex-shrink:0}
 
 /* Wizard choice cards */
 .choice-grid{
@@ -448,6 +270,57 @@ body{
   cursor:pointer;font-family:inherit;
 }
 .fmt-row select:focus{border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-glow)}
+.fmt-row select option{font-size:12px;padding:2px 4px}
+
+/* ── Playlist Range Input ── */
+.pl-range-wrap{
+  display:flex;align-items:center;gap:8px;
+  overflow:hidden;
+  max-height:0;opacity:0;
+  padding:0 0;
+  transition:max-height 0.45s cubic-bezier(0.4,0,0.2,1), opacity 0.35s ease, padding 0.35s ease, margin 0.35s ease;
+  margin:0;
+}
+.pl-range-wrap.visible{
+  max-height:40px;opacity:1;
+  padding:4px 0;
+  margin:2px 0 4px;
+}
+.pl-range-label{
+  font-size:12px;color:var(--text3);font-weight:500;white-space:nowrap;
+}
+.pl-range-input{
+  width:56px;padding:5px 8px;
+  border-radius:var(--radius-xs);
+  border:2px solid var(--border);
+  background:var(--bg2);
+  color:var(--text);
+  font-size:13px;outline:none;text-align:center;
+  font-family:inherit;
+  transition:all var(--transition);
+  -moz-appearance:textfield;
+}
+.pl-range-input::-webkit-outer-spin-button,
+.pl-range-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.pl-range-input:focus{border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-glow)}
+.pl-range-input::placeholder{color:var(--text3);font-size:11px}
+.pl-range-arrow{
+  font-size:16px;color:var(--primary);
+  display:flex;align-items:center;
+  animation:rangeArrow 1.2s ease-in-out infinite;
+}
+@keyframes rangeArrow{
+  0%,100%{transform:translateX(0);opacity:0.3}
+  50%{transform:translateX(5px);opacity:1}
+}
+
+/* ── Paste Hint ── */
+.paste-hint{
+  font-size:11px;color:var(--text3);text-align:center;
+  opacity:0.5;
+  transition:opacity var(--transition);
+  min-height:16px;
+}
 
 /* ── Progress Overlay ── */
 .progress-overlay{
@@ -717,193 +590,111 @@ body{
   <button class="top-btn close-btn" id="closeBtn" title="Close"><i class="fas fa-times"></i></button>
 </div>
 
-<div class="main-tab-bar">
-   <button class="main-tab" data-tab="popular"><i class="fas fa-fire"></i> Popular</button>
-  <button class="main-tab active" data-tab="wizard"><i class="fas fa-wand-magic-sparkles"></i> Wizard</button>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════ -->
-<!-- WIZARD TAB -->
-<!-- ══════════════════════════════════════════════════════════ -->
-<div class="tab-content active" id="tabWizard">
-  <div class="wizard-container">
-    <div id="ytdlpBanner" class="ytdlp-banner" style="display:none">
-      <div class="yb-icon">&#9888;</div>
-      <div class="yb-text" id="ytdlpBannerText">yt-dlp not found. Download it to start downloading.</div>
-      <button class="yb-btn" id="downloadYtdlpBtn">Download</button>
-    </div>
-
-    <div class="wizard-steps" id="wizardSteps">
-
-      <!-- Step 1: Choose Type -->
-      <div class="wizard-slide active" data-step="1">
-        <div class="ws-title"><i class="fas fa-question-circle"></i> What do you want to download?</div>
-        <div class="ws-desc">Choose the type of media you want to download from YouTube.</div>
-        <div class="wizard-warning"><i class="fas fa-exclamation-triangle"></i> Only single file can be downloaded, playlist will be ignored</div>
-        <div class="choice-grid">
-          <div class="choice-card" data-choice="video" onclick="wizSelectType('video')">
-            <div class="cc-icon">&#127916;</div>
-            <div class="cc-label">Video</div>
-            <div class="cc-desc">Download in MP4 format with your preferred quality</div>
-          </div>
-          <div class="choice-card" data-choice="audio" onclick="wizSelectType('audio')">
-            <div class="cc-icon">&#127925;</div>
-            <div class="cc-label">Audio</div>
-            <div class="cc-desc">Extract audio as high-quality MP3</div>
-          </div>
-        </div>
-        <div class="wizard-btns">
-          <button class="wizard-btn wizard-btn-primary" id="wizStep1Next" onclick="wizGoTo(2)" disabled><i class="fas fa-arrow-right"></i> Next</button>
-        </div>
-      </div>
-
-      <!-- Step 2: Enter URL -->
-      <div class="wizard-slide" data-step="2">
-        <div class="ws-title"><i class="fas fa-link"></i> Enter YouTube URL</div>
-        <div class="ws-desc">Paste the YouTube video or playlist URL below.</div>
-        <input class="wizard-input" id="wizUrlInput" type="text" placeholder="https://youtube.com/watch?v=..." autocomplete="off" spellcheck="false">
-        <div class="paste-hint"><i class="fas fa-clipboard"></i> Right‑click to paste</div>
-        <div class="wizard-btns">
-          <button class="wizard-btn wizard-btn-secondary" onclick="wizGoTo(1)"><i class="fas fa-arrow-left"></i> Back</button>
-          <button class="wizard-btn wizard-btn-primary" id="wizStep2Next" onclick="wizFetchFormats()"><i class="fas fa-search"></i> Fetch Formats</button>
-        </div>
-      </div>
-
-      <!-- Step 3: View & Select Format -->
-      <div class="wizard-slide" data-step="3">
-        <div class="ws-title"><i class="fas fa-list"></i> Available Formats</div>
-        <div class="ws-desc" id="wizStep3Desc">Review available formats and enter the format code to download.</div>
-        <div class="format-output" id="wizFormatOutput">
-          <div class="fmt-line fmt-info">Fetching available formats...</div>
-        </div>
-        <div class="fmt-row">
-          <input class="wizard-input" id="wizFormatCode" type="text" placeholder='Format code, or "best" for best quality'>
-          <select class="wizard-select" id="wizBitrateSelect">
-            <option value="auto">Auto</option>
-            <option value="128">128k</option>
-            <option value="192">192k</option>
-            <option value="256">256k</option>
-            <option value="320">320k</option>
-          </select>
-          <span style="font-size:11px;color:var(--text3);white-space:nowrap" id="wizFmtHint">&nbsp;</span>
-        </div>
-        <div class="wizard-btns">
-          <button class="wizard-btn wizard-btn-secondary" onclick="wizGoTo(2)"><i class="fas fa-arrow-left"></i> Back</button>
-          <button class="wizard-btn wizard-btn-primary" id="wizDownloadBtn" onclick="wizStartDownload()"><i class="fas fa-download"></i> Download</button>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Wizard Progress Overlay -->
-    <div class="progress-overlay" id="wizProgress">
-      <div class="po-icon"><i class="fas fa-circle-notch"></i></div>
-      <div class="po-title" id="wizProgressTitle">Downloading...</div>
-      <div class="po-bar"><div class="fill" id="wizProgressBar"></div></div>
-      <div class="po-steps" id="wizProgressSteps">
-        <div class="po-step" data-step="start" data-order="0"><span class="psi"><i class="fas fa-play"></i></span> Starting...</div>
-        <div class="po-step" data-step="download" data-order="1"><span class="psi"><i class="fas fa-download"></i></span> Downloading <span id="wizDlSpeed" class="po-speed"></span></div>
-        <div class="po-step" data-step="extract" data-order="2"><span class="psi"><i class="fas fa-file-audio"></i></span> Converting audio...</div>
-        <div class="po-step" data-step="merge" data-order="3"><span class="psi"><i class="fas fa-object-group"></i></span> Merging...</div>
-        <div class="po-step" data-step="done" data-order="4"><span class="psi"><i class="fas fa-check-circle"></i></span> Complete!</div>
-      </div>
-      <div class="po-size" id="wizDlSize"></div>
-      <div class="pl-progress" id="wizPlaylistProgress"></div>
-      <div class="po-detail" id="wizProgressDetail"></div>
-      <button class="cancel-btn" id="wizCancelBtn" onclick="cancelDownload()"><i class="fas fa-ban"></i> Cancel</button>
-    </div>
-
-    <!-- Update Overlay -->
-    <div class="update-overlay" id="updateOverlay">
-      <div class="update-ring-wrap">
-        <div class="update-ring"></div>
-        <div class="update-orbit"><div class="update-orbit-dot"></div></div>
-        <div class="update-center-icon"><i class="fas fa-bolt"></i></div>
-      </div>
-      <div class="update-title" id="updateTitle">Updating yt-dlp</div>
-      <div class="update-status" id="updateStatus">Preparing...</div>
-      <div class="update-bar-wrap"><div class="update-bar-fill" id="updateBarFill"></div></div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════ -->
-<!-- POPULAR TAB -->
-<!-- ══════════════════════════════════════════════════════════ -->
-<div class="tab-content" id="tabPopular">
-  <div class="sub-tab-bar">
-    <button class="sub-tab active" data-subtab="1080p"><i class="fas fa-film"></i> 1080p</button>
-    <button class="sub-tab" data-subtab="720p"><i class="fas fa-film"></i> 720p</button>
-    <button class="sub-tab" data-subtab="mp3"><i class="fas fa-music"></i> MP3</button>
+<div class="wizard-container" id="tabWizard">
+  <div id="ytdlpBanner" class="ytdlp-banner" style="display:none">
+    <div class="yb-icon">&#9888;</div>
+    <div class="yb-text" id="ytdlpBannerText">yt-dlp not found. Download it to start downloading.</div>
+    <button class="yb-btn" id="downloadYtdlpBtn">Download</button>
   </div>
 
-  <div class="sub-panel active" id="panel1080p">
-    <div class="panel-title"><i class="fas fa-download"></i> Download 1080p Video</div>
-    <div class="panel-desc">Download the highest quality Full HD video (1080p) merged with best audio.</div>
-    <div class="pl-range-wrap">
-      <span class="pl-range-label">From</span>
-      <input type="number" class="pl-range-input pl-range-start" placeholder="1" min="1">
-      <span class="pl-range-arrow"><i class="fas fa-arrow-right"></i></span>
-      <input type="number" class="pl-range-input pl-range-end" placeholder="∞" min="1">
-      <span class="pl-range-label">To</span>
+  <div class="wizard-steps" id="wizardSteps">
+
+    <!-- Step 1: Choose Type -->
+    <div class="wizard-slide active" data-step="1">
+      <div class="ws-title"><i class="fas fa-question-circle"></i> What do you want to download?</div>
+      <div class="ws-desc">Choose the type of media you want to download from YouTube.</div>
+      <div class="choice-grid">
+        <div class="choice-card" data-choice="video" onclick="wizSelectType('video')">
+          <div class="cc-icon">&#127916;</div>
+          <div class="cc-label">Video</div>
+          <div class="cc-desc">Download in MP4 format with your preferred quality</div>
+        </div>
+        <div class="choice-card" data-choice="audio" onclick="wizSelectType('audio')">
+          <div class="cc-icon">&#127925;</div>
+          <div class="cc-label">Audio</div>
+          <div class="cc-desc">Extract audio as high-quality MP3</div>
+        </div>
+      </div>
+      <div class="wizard-btns">
+        <button class="wizard-btn wizard-btn-primary" id="wizStep1Next" onclick="wizGoTo(2)" disabled><i class="fas fa-arrow-right"></i> Next</button>
+      </div>
     </div>
-    <div class="url-row">
-      <input type="text" class="popularUrlInput" placeholder="Paste YouTube URL here..." autocomplete="off" spellcheck="false">
-      <button class="dl-btn popularDlBtn" data-format="1080p"><i class="fas fa-download"></i> Download</button>
+
+    <!-- Step 2: Enter URL -->
+    <div class="wizard-slide" data-step="2">
+      <div class="ws-title"><i class="fas fa-link"></i> Enter YouTube URL</div>
+      <div class="ws-desc">Paste the YouTube video or playlist URL below.</div>
+      <input class="wizard-input" id="wizUrlInput" type="text" placeholder="https://youtube.com/watch?v=..." autocomplete="off" spellcheck="false">
+      <div class="paste-hint"><i class="fas fa-clipboard"></i> Right&#8209;click to paste</div>
+      <div class="wizard-btns">
+        <button class="wizard-btn wizard-btn-secondary" onclick="wizGoTo(1)"><i class="fas fa-arrow-left"></i> Back</button>
+        <button class="wizard-btn wizard-btn-primary" id="wizStep2Next" onclick="wizFetchFormats()"><i class="fas fa-search"></i> Fetch Formats</button>
+      </div>
     </div>
-    <div class="paste-hint"><i class="fas fa-clipboard"></i> Right‑click to paste</div>
+
+    <!-- Step 3: View & Select Format -->
+    <div class="wizard-slide" data-step="3">
+      <div class="ws-title"><i class="fas fa-list"></i> Available Formats</div>
+      <div class="ws-desc" id="wizStep3Desc">Review available formats and enter the format code to download.</div>
+      <div class="format-output" id="wizFormatOutput">
+        <div class="fmt-line fmt-info">Fetching available formats...</div>
+      </div>
+      <div class="pl-range-wrap" id="wizPlRange">
+        <span class="pl-range-label">From</span>
+        <input type="number" class="pl-range-input pl-range-start" placeholder="1" min="1">
+        <span class="pl-range-arrow"><i class="fas fa-arrow-right"></i></span>
+        <input type="number" class="pl-range-input pl-range-end" placeholder="∞" min="1">
+        <span class="pl-range-label">To</span>
+      </div>
+      <div class="fmt-row">
+        <select class="wizard-input" id="wizFormatCode" style="cursor:pointer;flex:1;width:auto">
+          <option value="best">best (auto)</option>
+        </select>
+        <select class="wizard-select" id="wizBitrateSelect">
+          <option value="auto">Auto</option>
+          <option value="128">128k</option>
+          <option value="192">192k</option>
+          <option value="256">256k</option>
+          <option value="320">320k</option>
+        </select>
+        <span style="font-size:11px;color:var(--text3);white-space:nowrap" id="wizFmtHint">&nbsp;</span>
+      </div>
+      <div class="wizard-btns">
+        <button class="wizard-btn wizard-btn-secondary" onclick="wizGoTo(2)"><i class="fas fa-arrow-left"></i> Back</button>
+        <button class="wizard-btn wizard-btn-primary" id="wizDownloadBtn" onclick="wizStartDownload()"><i class="fas fa-download"></i> Download</button>
+      </div>
+    </div>
+
   </div>
 
-  <div class="sub-panel" id="panel720p">
-    <div class="panel-title"><i class="fas fa-download"></i> Download 720p Video</div>
-    <div class="panel-desc">Download HD video (720p) merged with best audio - smaller file size.</div>
-    <div class="pl-range-wrap">
-      <span class="pl-range-label">From</span>
-      <input type="number" class="pl-range-input pl-range-start" placeholder="1" min="1">
-      <span class="pl-range-arrow"><i class="fas fa-arrow-right"></i></span>
-      <input type="number" class="pl-range-input pl-range-end" placeholder="∞" min="1">
-      <span class="pl-range-label">To</span>
-    </div>
-    <div class="url-row">
-      <input type="text" class="popularUrlInput" placeholder="Paste YouTube URL here..." autocomplete="off" spellcheck="false">
-      <button class="dl-btn popularDlBtn" data-format="720p"><i class="fas fa-download"></i> Download</button>
-    </div>
-    <div class="paste-hint"><i class="fas fa-clipboard"></i> Right‑click to paste</div>
-  </div>
-
-  <div class="sub-panel" id="panelmp3">
-    <div class="panel-title"><i class="fas fa-music"></i> Download MP3 Audio</div>
-    <div class="panel-desc">Extract and download high-quality audio as MP3 from any YouTube video.</div>
-    <div class="pl-range-wrap">
-      <span class="pl-range-label">From</span>
-      <input type="number" class="pl-range-input pl-range-start" placeholder="1" min="1">
-      <span class="pl-range-arrow"><i class="fas fa-arrow-right"></i></span>
-      <input type="number" class="pl-range-input pl-range-end" placeholder="∞" min="1">
-      <span class="pl-range-label">To</span>
-    </div>
-    <div class="url-row">
-      <input type="text" class="popularUrlInput" placeholder="Paste YouTube URL here..." autocomplete="off" spellcheck="false">
-      <button class="dl-btn popularDlBtn" data-format="mp3"><i class="fas fa-download"></i> Download</button>
-    </div>
-    <div class="paste-hint"><i class="fas fa-clipboard"></i> Right‑click to paste</div>
-  </div>
-
-  <!-- Popular Progress Overlay -->
-  <div class="progress-overlay" id="popularProgress" style="position:absolute">
+  <!-- Wizard Progress Overlay -->
+  <div class="progress-overlay" id="wizProgress">
     <div class="po-icon"><i class="fas fa-circle-notch"></i></div>
-    <div class="po-title" id="popularProgressTitle">Downloading...</div>
-    <div class="po-bar"><div class="fill" id="popularProgressBar"></div></div>
-    <div class="po-steps" id="popularProgressSteps">
+    <div class="po-title" id="wizProgressTitle">Downloading...</div>
+    <div class="po-bar"><div class="fill" id="wizProgressBar"></div></div>
+    <div class="po-steps" id="wizProgressSteps">
       <div class="po-step" data-step="start" data-order="0"><span class="psi"><i class="fas fa-play"></i></span> Starting...</div>
-      <div class="po-step" data-step="download" data-order="1"><span class="psi"><i class="fas fa-download"></i></span> Downloading <span id="popularDlSpeed" class="po-speed"></span></div>
+      <div class="po-step" data-step="download" data-order="1"><span class="psi"><i class="fas fa-download"></i></span> Downloading <span id="wizDlSpeed" class="po-speed"></span></div>
       <div class="po-step" data-step="extract" data-order="2"><span class="psi"><i class="fas fa-file-audio"></i></span> Converting audio...</div>
       <div class="po-step" data-step="merge" data-order="3"><span class="psi"><i class="fas fa-object-group"></i></span> Merging...</div>
       <div class="po-step" data-step="done" data-order="4"><span class="psi"><i class="fas fa-check-circle"></i></span> Complete!</div>
     </div>
-    <div class="po-size" id="popularDlSize"></div>
-    <div class="pl-progress" id="popularPlaylistProgress"></div>
-    <div class="po-detail" id="popularProgressDetail"></div>
-    <button class="cancel-btn" id="popularCancelBtn" onclick="cancelDownload()"><i class="fas fa-ban"></i> Cancel</button>
+    <div class="po-size" id="wizDlSize"></div>
+    <div class="pl-progress" id="wizPlaylistProgress"></div>
+    <div class="po-detail" id="wizProgressDetail"></div>
+    <button class="cancel-btn" id="wizCancelBtn" onclick="cancelDownload()"><i class="fas fa-ban"></i> Cancel</button>
+  </div>
+
+  <!-- Update Overlay -->
+  <div class="update-overlay" id="updateOverlay">
+    <div class="update-ring-wrap">
+      <div class="update-ring"></div>
+      <div class="update-orbit"><div class="update-orbit-dot"></div></div>
+      <div class="update-center-icon"><i class="fas fa-bolt"></i></div>
+    </div>
+    <div class="update-title" id="updateTitle">Updating yt-dlp</div>
+    <div class="update-status" id="updateStatus">Preparing...</div>
+    <div class="update-bar-wrap"><div class="update-bar-fill" id="updateBarFill"></div></div>
   </div>
 </div>
 
@@ -955,16 +746,13 @@ const state = {
   wizType: null,
   wizUrl: '',
   wizFormats: '',
-  wizFormatCode: '',
   bestAudioFmt: null,
   bestAudioBitrate: 320,
   audioFmtMap: {},
   downloading: false,
   currentDlId: null,
   theme: 'dark',
-  playlistMode: true,
-  activeTab: 'wizard',
-  activeSubTab: '1080p'
+  playlistMode: true
 };
 let dlEventSource = null;
 
@@ -1040,28 +828,6 @@ function stripPlaylistParams(url) {
   return url.replace(/[?&](?:list|index|si)=[^&]+/g, '').replace(/[?&]$/, '');
 }
 
-/* ── Main Tab Switching ── */
-document.querySelectorAll('.main-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    $(`tab${tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1)}`).classList.add('active');
-    state.activeTab = tab.dataset.tab;
-  });
-});
-
-/* ── Sub Tab Switching ── */
-document.querySelectorAll('.sub-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.sub-panel').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    $(`panel${tab.dataset.subtab}`).classList.add('active');
-    state.activeSubTab = tab.dataset.subtab;
-  });
-});
-
 /* ── Window Controls ── */
 $('closeBtn').addEventListener('click', () => {
   if (window.electronAPI) window.electronAPI.closeWindow();
@@ -1111,8 +877,8 @@ $('wizUrlInput').addEventListener('input', () => {
   state.wizUrl = $('wizUrlInput').value.trim();
 });
 function updateWizBitrateHint() {
-  const fmt = $('wizFormatCode').value.trim();
-  if (!fmt || fmt === 'best') return;
+  const fmt = $('wizFormatCode').value;
+  if (fmt === 'best') return;
   const srcKbps = state.audioFmtMap[fmt];
   if (!srcKbps) return;
   const calcBitrate = mp3BitrateForSource(srcKbps);
@@ -1124,10 +890,7 @@ function updateWizBitrateHint() {
 
 $('wizBitrateSelect').addEventListener('change', updateWizBitrateHint);
 
-$('wizFormatCode').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') wizStartDownload();
-});
-$('wizFormatCode').addEventListener('input', () => {
+$('wizFormatCode').addEventListener('change', () => {
   if (state.wizType === 'audio') updateWizBitrateHint();
 });
 $('wizFormatOutput').addEventListener('click', (e) => {
@@ -1135,12 +898,9 @@ $('wizFormatOutput').addEventListener('click', (e) => {
   if (!line) return;
   $('wizFormatOutput').querySelectorAll('.fmt-selected').forEach(s => s.classList.remove('fmt-selected'));
   line.classList.add('fmt-selected');
-  let fmt = line.dataset.fmt;
-  if (state.wizType === 'video' && fmt && !fmt.includes('+') && !fmt.includes('/')) {
-    fmt = fmt + '+bestaudio';
-  }
+  const fmt = line.dataset.fmt;
   $('wizFormatCode').value = fmt;
-  if (state.wizType === 'audio') updateWizBitrateHint();
+  $('wizFormatCode').dispatchEvent(new Event('change'));
 });
 
 async function fetchAudioBitratesFromJson() {
@@ -1170,9 +930,9 @@ async function fetchAudioBitratesFromJson() {
     state.bestAudioBitrate = mp3Bitrate;
     state.audioFmtMap = fmtMap;
     if (state.wizType === 'audio' && bestId) {
-      const currentVal = $('wizFormatCode').value.trim();
-      if (!currentVal || currentVal === 'best') {
-        $('wizFormatCode').value = bestId;
+      const select = $('wizFormatCode');
+      if (select.value === 'best') {
+        select.value = bestId;
       }
       updateWizBitrateHint();
     }
@@ -1182,27 +942,34 @@ async function fetchAudioBitratesFromJson() {
 async function wizFetchFormats() {
   let url = $('wizUrlInput').value.trim();
   if (!url) { showToast('Please enter a YouTube URL', 'error'); return; }
-  url = stripPlaylistParams(url);
   state.wizUrl = url;
 
+  const isPlaylist = checkIsPlaylist(url);
   const isAudioMode = state.wizType === 'audio';
   const brSelect = $('wizBitrateSelect');
   if (isAudioMode) {
-    $('wizStep3Desc').textContent = 'Audio formats shown below. Click any to use it, or choose an MP3 bitrate.';
-    $('wizFormatCode').placeholder = 'Format code, or "best" for best quality';
+    $('wizStep3Desc').textContent = 'Audio formats shown below. Select one from the dropdown or choose an MP3 bitrate.';
     $('wizFmtHint').textContent = 'Auto-converted to MP3';
     brSelect.style.display = '';
     brSelect.value = 'auto';
   } else {
-    $('wizStep3Desc').textContent = 'Video formats shown below. Click any to auto-merge best audio, or enter a custom code.';
-    $('wizFormatCode').placeholder = 'Format code, or "best" for best quality';
+    $('wizStep3Desc').textContent = 'Video formats shown below. Select one from the dropdown — best audio is merged automatically.';
     $('wizFmtHint').textContent = 'Audio merged automatically';
     brSelect.style.display = 'none';
   }
 
+  // Show playlist range inputs if playlist detected
+  const plRange = $('wizPlRange');
+  if (isPlaylist) {
+    plRange.classList.add('visible');
+  } else {
+    plRange.classList.remove('visible');
+  }
+
   $('wizFormatOutput').innerHTML = '<div class="fmt-loading"><div class="spinner"></div> Fetching available formats...</div>';
   $('wizStep2Next').disabled = true;
-  $('wizFormatCode').value = '';
+  $('wizFormatCode').innerHTML = '<option value="best">best (auto)</option>';
+  $('wizFormatCode').value = 'best';
   wizGoTo(3);
 
   try {
@@ -1224,7 +991,6 @@ async function wizFetchFormats() {
         const data = JSON.parse(e.data);
         if (data.stage === 'formats') {
           formatOutput += data.message + '\n';
-          const isAudioMode = state.wizType === 'audio';
           const html = formatOutput.split('\n').map(l => {
             if (l.startsWith('[')) return `<div class="fmt-line fmt-info">${escapeHtml(l)}</div>`;
             if (l.match(/^\d+/)) {
@@ -1247,12 +1013,30 @@ async function wizFetchFormats() {
           state.bestAudioFmt = result.bestId;
           state.bestAudioBitrate = result.mp3Bitrate;
           state.audioFmtMap = result.fmtMap;
+
+          const select = $('wizFormatCode');
+          select.innerHTML = '<option value="best">best (auto)</option>';
+          const fmtLines = (data.fullOutput || formatOutput).split('\n');
+          for (const l of fmtLines) {
+            const m = l.match(/^\s*(\S+)\s/);
+            if (!m) continue;
+            const id = m[1];
+            if (!/^\d+/.test(id)) continue;
+            const isAudioLine = l.includes('audio only');
+            if (isAudioMode && !isAudioLine) continue;
+            if (!isAudioMode && isAudioLine) continue;
+            const label = l.trim().split(/\s+/).slice(0, 6).join(' ');
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = `${id} - ${label}`;
+            select.appendChild(opt);
+          }
+
           if (state.wizType === 'audio' && result.bestId) {
-            $('wizFormatCode').value = result.bestId;
+            select.value = result.bestId;
             updateWizBitrateHint();
           }
           $('wizStep2Next').disabled = false;
-          $('wizFormatCode').focus();
           cleanupEventSource();
 
           fetchAudioBitratesFromJson();
@@ -1290,16 +1074,13 @@ async function cancelDownload() {
   if (state.downloading) {
     state.downloading = false;
     $('wizProgress')?.classList.remove('visible');
-    $('popularProgress')?.classList.remove('visible');
   }
   showToast('Download cancelled');
 }
 
 async function wizStartDownload() {
   let url = state.wizUrl;
-  let formatCode = $('wizFormatCode').value.trim();
-  if (!formatCode) formatCode = 'best';
-  state.wizFormatCode = formatCode;
+  const formatCode = $('wizFormatCode').value || 'best';
 
   if (!url) { showToast('No URL', 'error'); return; }
 
@@ -1307,7 +1088,21 @@ async function wizStartDownload() {
   const isPlaylist = checkIsPlaylist(url);
   if (!isPlaylist) url = stripPlaylistParams(url);
   else url = url.replace(/[?&]index=\d+/g, '').replace(/[?&]$/, '');
+
   const payload = { url, mode: state.wizType };
+
+  if (isPlaylist) {
+    const startInput = document.querySelector('#wizPlRange .pl-range-start');
+    const endInput = document.querySelector('#wizPlRange .pl-range-end');
+    if (startInput) {
+      const s = parseInt(startInput.value);
+      if (!isNaN(s) && s > 0) payload.startIndex = s;
+    }
+    if (endInput) {
+      const e = parseInt(endInput.value);
+      if (!isNaN(e) && e > 0) payload.endIndex = e;
+    }
+  }
 
   if (isAudio) {
     payload.audioOnly = true;
@@ -1320,7 +1115,8 @@ async function wizStartDownload() {
       payload.audioBitrate = srcKbps ? mp3BitrateForSource(srcKbps) : state.bestAudioBitrate;
     }
   } else {
-    payload.formatCode = formatCode;
+    const needsMerge = formatCode !== 'best' && !formatCode.includes('+') && !formatCode.includes('/');
+    payload.formatCode = needsMerge ? formatCode + '+bestaudio' : formatCode;
   }
 
   state.downloading = true;
@@ -1457,10 +1253,14 @@ function listenWizardProgress(id, url) {
           document.querySelectorAll('.choice-card').forEach(c => c.classList.remove('selected'));
           $('wizStep1Next').disabled = true;
           $('wizUrlInput').value = '';
-          $('wizFormatCode').value = '';
+          $('wizFormatCode').innerHTML = '<option value="best">best (auto)</option>';
+          $('wizFormatCode').value = 'best';
           $('wizFormatOutput').innerHTML = '<div class="fmt-line fmt-info">Fetching available formats...</div>';
           plContainer.classList.remove('visible');
           plContainer.innerHTML = '';
+          document.querySelector('#wizPlRange .pl-range-start').value = '';
+          document.querySelector('#wizPlRange .pl-range-end').value = '';
+          $('wizPlRange').classList.remove('visible');
           loadDlHistory();
         }, 1500);
       } else if (stage === 'error') {
@@ -1508,191 +1308,9 @@ function addPlaylistItemDone(container, fname) {
     lastItem.classList.remove('downloading');
     lastItem.classList.add('done');
     lastItem.querySelector('.pli-bar .fill').style.width = '100%';
-    lastItem.querySelector('.pli-status').textContent = '✓';
+    lastItem.querySelector('.pli-status').textContent = '\u2713';
     lastItem.querySelector('.pli-title').textContent = fname.length > 30 ? fname.substring(0, 27) + '...' : fname;
   }
-}
-
-/* ── POPULAR DOWNLOAD ── */
-document.querySelectorAll('.popularDlBtn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const panel = btn.closest('.sub-panel');
-    const input = panel.querySelector('.popularUrlInput');
-    const url = input.value.trim();
-    const format = btn.dataset.format;
-    if (!url) { showToast('Please enter a YouTube URL', 'error'); return; }
-    startPopularDownload(url, format);
-  });
-});
-
-document.querySelectorAll('.popularUrlInput').forEach(input => {
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const btn = input.closest('.sub-panel').querySelector('.popularDlBtn');
-      if (btn) btn.click();
-    }
-  });
-});
-
-async function startPopularDownload(url, format) {
-  state.downloading = true;
-  const isAudio = format === 'mp3';
-  const isPlaylist = checkIsPlaylist(url);
-  if (!isPlaylist) url = stripPlaylistParams(url);
-  else url = url.replace(/[?&]index=\d+/g, '').replace(/[?&]$/, '');
-
-  const ov = $('popularProgress');
-  ov.classList.add('visible');
-  $('popularProgressTitle').textContent = `Downloading ${format.toUpperCase()}...`;
-  $('popularProgressBar').style.width = '0%';
-  $('popularProgressDetail').textContent = '';
-  ov.querySelectorAll('.po-step').forEach(s => { s.className = 'po-step'; });
-  ov.querySelector('[data-step="start"]')?.classList.add('active');
-
-  const payload = { url, format, audioOnly: isAudio };
-
-  if (isPlaylist) {
-    const panel = document.querySelector('.sub-panel.active');
-    const startInput = panel?.querySelector('.pl-range-start');
-    const endInput = panel?.querySelector('.pl-range-end');
-    if (startInput) {
-      const s = parseInt(startInput.value);
-      if (!isNaN(s) && s > 0) payload.startIndex = s;
-    }
-    if (endInput) {
-      const e = parseInt(endInput.value);
-      if (!isNaN(e) && e > 0) payload.endIndex = e;
-    }
-  }
-
-  const endpoint = isPlaylist ? '/api/download-playlist' : '/api/download';
-
-  const res = await api(endpoint, { method: 'POST', body: JSON.stringify(payload) });
-  if (!res || !res.id) {
-    ov.classList.remove('visible');
-    state.downloading = false;
-    showToast('Failed to start download', 'error');
-    return;
-  }
-  state.currentDlId = res.id;
-
-  if (dlEventSource) dlEventSource.close();
-  const plContainer = $('popularPlaylistProgress');
-  const stepEls = ov.querySelectorAll('.po-step');
-
-  dlEventSource = new EventSource('/api/download/progress/' + res.id);
-  const popStepEls = Array.from(ov.querySelectorAll('.po-step')).sort((a, b) => parseInt(a.dataset.order || 99) - parseInt(b.dataset.order || 99));
-
-  function popActivateStep(stageName) {
-    const target = popStepEls.find(s => s.dataset.step === stageName);
-    if (!target) return;
-    const targetOrder = parseInt(target.dataset.order || 99);
-    popStepEls.forEach(s => {
-      const sOrder = parseInt(s.dataset.order || 99);
-      if (sOrder < targetOrder) {
-        s.classList.remove('active');
-        s.classList.add('done');
-      } else if (s === target) {
-        s.classList.remove('done', 'error');
-        s.classList.add('active');
-      }
-    });
-  }
-
-  dlEventSource.onmessage = (e) => {
-    try {
-      const data = JSON.parse(e.data);
-      const { stage, message, progress } = data;
-
-      if (['start', 'download', 'extract', 'merge', 'done', 'error', 'cancelled'].includes(stage)) {
-        if (stage === 'error') {
-          popStepEls.forEach(s => { s.classList.remove('active', 'done'); });
-          const errDiv = document.createElement('div');
-          errDiv.className = 'po-step error';
-          errDiv.style.cursor = 'pointer';
-          const errMsg = data.message || 'Failed';
-          errDiv.innerHTML = '<span class="psi"><i class="fas fa-exclamation-circle"></i></span> Error: ' + escapeHtml(errMsg.substring(0, 300)) + ' <span style="margin-left:auto;font-size:11px;opacity:0.7">Dismiss</span>';
-          errDiv.addEventListener('click', () => {
-            state.currentDlId = null;
-            ov.classList.remove('visible');
-            state.downloading = false;
-          });
-          $('popularProgressSteps').appendChild(errDiv);
-        } else if (stage === 'cancelled') {
-          state.currentDlId = null;
-          setTimeout(() => { ov.classList.remove('visible'); state.downloading = false; }, 500);
-          return;
-        } else {
-          popActivateStep(stage);
-        }
-      }
-
-      if (isPlaylist) {
-        plContainer.classList.add('visible');
-        if (data.item && data.total) updatePlaylistItem(plContainer, data);
-        if (data.stage === 'file_complete' && data.file) {
-          const fname = data.file.split('\\').pop().split('/').pop();
-          addPlaylistItemDone(plContainer, fname);
-        }
-      }
-
-      if (progress !== undefined) {
-        const pct = Math.min(progress, 100);
-        $('popularProgressBar').style.width = pct + '%';
-        $('popularProgressBar').style.transition = pct === 100 ? 'width 0.5s ease' : 'width 0.3s ease';
-        $('popularDlSize').textContent = pct < 100 ? pct.toFixed(1) + '%' : '100%';
-      }
-
-      if (message) {
-        const speedMatch = message.match(/at\s+([\d.]+[KMG]?i?B\/s)/);
-        const sizeMatch = message.match(/([\d.]+[KMG]?i?B)\s+of\s+([\d.]+[KMG]?i?B)/);
-        const etaMatch = message.match(/ETA\s+(\d+:\d+)/);
-
-        if (speedMatch) $('popularDlSpeed').textContent = speedMatch[1];
-        if (sizeMatch) $('popularDlSize').textContent = sizeMatch[1] + ' / ' + sizeMatch[2];
-        if (etaMatch) $('popularDlSize').textContent = ($('popularDlSize').textContent || '') + ' \u00B7 ETA ' + etaMatch[1];
-
-        if (message.includes('[download]') && message.includes('%')) {
-          const pctMatch = message.match(/(\d+\.?\d*)%/);
-          if (pctMatch && !sizeMatch) {
-            $('popularDlSize').textContent = pctMatch[1] + '%';
-          }
-        }
-        $('popularProgressDetail').textContent = message.replace(/\[download\]\s*/g, '').trim();
-      }
-
-      if (data.stage === 'done') {
-        $('popularProgressBar').style.width = '100%';
-        $('popularDlSize').textContent = '100%';
-        $('popularDlSpeed').textContent = '';
-        popActivateStep('done');
-        state.currentDlId = null;
-        setTimeout(() => {
-          showToast('Download complete!', 'success');
-          ov.classList.remove('visible');
-          plContainer.classList.remove('visible');
-          plContainer.innerHTML = '';
-          state.downloading = false;
-          document.querySelectorAll('.popularUrlInput').forEach(i => i.value = '');
-          loadDlHistory();
-        }, 1500);
-      } else if (data.stage === 'error') {
-        state.currentDlId = null;
-        setTimeout(() => {
-          showToast(data.message || 'Download failed', 'error');
-          ov.classList.remove('visible');
-          state.downloading = false;
-        }, 1500);
-      }
-    } catch(_) {}
-  };
-  dlEventSource.onerror = () => {
-    cleanupEventSource();
-    if (state.downloading) {
-      ov.classList.remove('visible');
-      state.downloading = false;
-    }
-  };
 }
 
 /* ── yt-dlp Status & Download ── */
@@ -1894,7 +1512,7 @@ function escapeHtml(str) {
 function mp3BitrateForSource(sourceKbps) {
   if (sourceKbps < 160) return 128;
   if (sourceKbps < 224) return 192;
-  if (sourceKbps < 288) return 256;
+  if (sourceKbps < 256) return 256;
   return 320;
 }
 
