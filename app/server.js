@@ -402,24 +402,10 @@ app.post('/api/download', async (req, res) => {
       let result;
       try {
         result = await execSpawn(ytPath, baseArgs, emitter, 'download', id);
-      } catch (firstErr) {
-        if (firstErr.message && firstErr.message.includes('Requested format is not available')) {
-          emitter.emit('progress', { stage: 'info', message: 'Format not available with default client, retrying with Android client...' });
-          const androidArgs = [...baseArgs];
-          const ffmpegIdx = androidArgs.indexOf('--ffmpeg-location');
-          androidArgs.splice(ffmpegIdx > -1 ? ffmpegIdx + 2 : 1, 0, '--extractor-args', 'youtube:player_client=android');
-          try {
-            result = await execSpawn(ytPath, androidArgs, emitter, 'download', id);
-          } catch (secondErr) {
-            emitter.emit('progress', { stage: 'error', message: secondErr.message });
-            setTimeout(() => delete downloadEmitters[id], 5000);
-            return;
-          }
-        } else {
-          emitter.emit('progress', { stage: 'error', message: firstErr.message });
-          setTimeout(() => delete downloadEmitters[id], 5000);
-          return;
-        }
+      } catch (err) {
+        emitter.emit('progress', { stage: 'error', message: err.message });
+        setTimeout(() => delete downloadEmitters[id], 5000);
+        return;
       }
 
       if (result && result.cancelled) {
@@ -565,16 +551,7 @@ app.post('/api/download-playlist', async (req, res) => {
 
       emitter.emit('progress', { stage: 'playlist_start', message: 'Starting playlist download...' });
 
-      // Pass 1: default client (no extractor-args) for highest quality on available videos
-      const result1 = await spawnProcess(buildArgs(null));
-
-      // Pass 2: Android client for DRM videos (skips already-downloaded files)
-      if (!downloadProcs[id]) {
-        emitter.emit('progress', { stage: 'cancelled', message: 'Download cancelled' });
-        setTimeout(() => delete downloadEmitters[id], 2000);
-        return;
-      }
-      await spawnProcess(buildArgs('youtube:player_client=android'));
+      const result = await spawnProcess(buildArgs(null));
 
       if (!downloadProcs[id]) {
         emitter.emit('progress', { stage: 'cancelled', message: 'Download cancelled' });
@@ -585,10 +562,10 @@ app.post('/api/download-playlist', async (req, res) => {
       delete downloadProcs[id];
       delete playlistDirs[id];
 
-      const hadError = result1.code > 1 || (result1.code < 0);
-      const someUnavailable = result1.code === 1;
+      const hadError = result.code > 1 || (result.code < 0);
+      const someUnavailable = result.code === 1;
       if (hadError) {
-        emitter.emit('progress', { stage: 'error', message: `Download failed: ${result1.stderr.substring(0, 500)}` });
+        emitter.emit('progress', { stage: 'error', message: `Download failed: ${result.stderr.substring(0, 500)}` });
       } else if (someUnavailable) {
         emitter.emit('progress', { stage: 'done', message: 'Playlist download complete (some unavailable, lower quality for some)', progress: 100 });
       } else {

@@ -1521,6 +1521,7 @@ function listenWizardProgress(id, url) {
   const stepEls = Array.from($('wizProgress').querySelectorAll('.po-step')).sort((a, b) => parseInt(a.dataset.order || 99) - parseInt(b.dataset.order || 99));
   const svgFill = $('wizPlRingFillSvg');
   const ringNum = $('wizPlRingNum');
+  const labelText = $('wizPlRingLabelText');
 
   let _stepTimer = null;
   let _lastStepOrder = -1;
@@ -1587,7 +1588,6 @@ function listenWizardProgress(id, url) {
 
       if (['start', 'download', 'extract', 'merge', 'done', 'error', 'cancelled', 'playlist_start', 'playlist_item', 'playlist_progress', 'info'].includes(stage)) {
         if (isPlaylist || stage === 'playlist_start' || stage === 'playlist_item' || stage === 'playlist_progress') {
-          const labelText = $('wizPlRingLabelText');
 
           if (stage === 'playlist_start') {
             $('wizProgressTitle').textContent = 'Downloading Playlist...';
@@ -1635,11 +1635,13 @@ function listenWizardProgress(id, url) {
               if (finalItem !== _currentPlItem) {
                 _currentPlItem = finalItem;
                 if (ringNum) {
-                  ringNum.textContent = finalItem;
+                  const doneItems = plContainer.querySelectorAll('.pl-item.done').length;
+                  const remaining = Math.max(0, (data.total || 0) - doneItems);
+                  ringNum.textContent = remaining;
                   ringNum.classList.remove('pop');
                   void ringNum.offsetWidth;
                   ringNum.classList.add('pop');
-                  if (labelText) labelText.textContent = '';
+                  if (labelText) labelText.textContent = 'REMAINING';
                 }
               }
               if (pct >= 100) {
@@ -1701,6 +1703,17 @@ function listenWizardProgress(id, url) {
         if (stage === 'file_complete' && data.file) {
           const fname = data.file.split('\\').pop().split('/').pop();
           addPlaylistItemDone(plContainer, fname);
+          if (data.total) {
+            const doneItems = plContainer.querySelectorAll('.pl-item.done').length;
+            const remaining = Math.max(0, data.total - doneItems);
+            if (ringNum) {
+              ringNum.textContent = remaining;
+              ringNum.classList.remove('pop');
+              void ringNum.offsetWidth;
+              ringNum.classList.add('pop');
+            }
+            if (labelText) labelText.textContent = remaining > 0 ? 'REMAINING' : '';
+          }
         }
         if (stage === 'playlist_progress' && data.item && data.total) {
           const doneItems = plContainer.querySelectorAll('.pl-item.done').length;
