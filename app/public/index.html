@@ -410,6 +410,144 @@ body{
 }
 .progress-overlay .po-detail{font-size:12px;color:var(--text3);text-align:center;max-width:420px;word-break:break-all}
 
+/* ── Playlist Circle Ring ── */
+.pl-ring-wrapper {
+  display: none;
+  position: relative;
+  width: 160px;
+  height: 160px;
+  flex-shrink: 0;
+  margin: 12px 0;
+  align-items: center;
+  justify-content: center;
+}
+.pl-ring-wrapper.visible {
+  display: flex;
+  animation: plRingIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes plRingIn {
+  0% { opacity: 0; transform: scale(0.6) rotate(-20deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+.pl-svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.pl-ring-dash {
+  transform-origin: center;
+  animation: plDashRotate 20s linear infinite;
+  opacity: 0.25;
+  transition: stroke var(--transition);
+}
+@keyframes plDashRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.pl-ring-track-svg {
+  stroke: var(--border);
+  opacity: 0.4;
+  transition: stroke var(--transition);
+}
+
+.pl-ring-fill-svg {
+  transition: stroke-dashoffset 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: drop-shadow(0 0 6px var(--primary-glow));
+}
+
+.pl-ring-fill-svg.loading {
+  animation: plRingFillPulse 2s ease-in-out infinite;
+}
+
+@keyframes plRingFillPulse {
+  0%, 100% { filter: drop-shadow(0 0 4px var(--primary-glow)); stroke-width: 6; }
+  50% { filter: drop-shadow(0 0 12px var(--primary-glow)) drop-shadow(0 0 4px var(--accent)); stroke-width: 7; }
+}
+
+.pl-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.pl-center-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.pl-ring-label-text {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text3);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+  transition: color var(--transition);
+}
+
+.pl-ring-num {
+  font-size: 38px;
+  font-weight: 800;
+  color: var(--primary);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color var(--transition);
+  text-shadow: 0 0 10px var(--primary-glow);
+}
+
+.pl-ring-num.pop {
+  animation: plNumPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes plNumPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.22); text-shadow: 0 0 20px var(--primary-glow); }
+  100% { transform: scale(1); }
+}
+
+.pl-ring-indicator {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform-origin: center;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pl-ring-badge-wrap {
+  position: absolute;
+  top: 16px; /* Center is exactly at 80 - 64 = 16 */
+  left: 80px; /* Center of the 160x160 canvas */
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.pl-ring-badge {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 3px 7px;
+  border-radius: 10px;
+  box-shadow: 0 0 8px var(--primary-glow), 0 1px 3px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  white-space: nowrap;
+  font-family: inherit;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
 /* ── Playlist Progress ── */
 .pl-progress{
   display:none;width:100%;max-width:420px;
@@ -739,6 +877,41 @@ body{
       <div class="po-step" data-step="extract" data-order="2"><span class="psi"><i class="fas fa-file-audio"></i></span> Converting audio...</div>
       <div class="po-step" data-step="merge" data-order="3"><span class="psi"><i class="fas fa-object-group"></i></span> Merging...</div>
       <div class="po-step" data-step="done" data-order="4"><span class="psi"><i class="fas fa-check-circle"></i></span> Complete!</div>
+    </div>
+    <!-- Playlist Circle Ring -->
+    <div class="pl-ring-wrapper" id="wizPlRing">
+      <svg class="pl-svg" width="160" height="160" viewBox="0 0 160 160">
+        <defs>
+          <linearGradient id="plProgressGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="var(--primary)" />
+            <stop offset="100%" stop-color="var(--accent)" />
+          </linearGradient>
+        </defs>
+        <!-- Outer High-Tech Rotating Dashed Ring -->
+        <circle class="pl-ring-dash" cx="80" cy="80" r="74" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="4 6" fill="none" />
+        
+        <!-- Track Circle -->
+        <circle class="pl-ring-track-svg" cx="80" cy="80" r="64" stroke="var(--surface2)" stroke-width="6" fill="none" />
+        
+        <!-- Progress Fill Circle -->
+        <circle class="pl-ring-fill-svg" id="wizPlRingFillSvg" cx="80" cy="80" r="64" 
+                stroke="url(#plProgressGrad)" stroke-width="6" stroke-linecap="round" fill="none"
+                stroke-dasharray="402.12" stroke-dashoffset="402.12" transform="rotate(-90 80 80)" />
+      </svg>
+
+      <!-- Travelling Indicator with Floating Percentage -->
+      <div class="pl-ring-indicator" id="wizPlRingIndicator">
+        <div class="pl-ring-badge-wrap">
+          <div class="pl-ring-badge" id="wizPlRingBadge">0%</div>
+        </div>
+      </div>
+      
+      <div class="pl-ring-center">
+        <div class="pl-center-content">
+          <span class="pl-ring-label-text" id="wizPlRingLabelText">VIDEO</span>
+          <span class="pl-ring-num" id="wizPlRingNum">-</span>
+        </div>
+      </div>
     </div>
     <div class="po-size" id="wizDlSize"></div>
     <div class="pl-progress" id="wizPlaylistProgress"></div>
@@ -1280,6 +1453,14 @@ async function wizStartDownload() {
   state.downloading = true;
   showWizardProgress();
 
+  // Immediately show playlist ring (don't wait for SSE playlist_start event)
+  if (isPlaylist) {
+    $('wizProgressTitle').textContent = 'Downloading Playlist...';
+    $('wizProgressSteps').style.display = 'none';
+    $('wizPlRing').classList.add('visible');
+    $('wizDlSize').textContent = '';
+  }
+
   const endpoint = isPlaylist ? '/api/download-playlist' : '/api/download';
   const res = await api(endpoint, { method: 'POST', body: JSON.stringify(payload) });
   if (!res || !res.id) {
@@ -1307,6 +1488,27 @@ function showWizardProgress() {
 
 function hideWizardProgress() {
   $('wizProgress').classList.remove('visible');
+  $('wizProgressSteps').style.display = '';
+  $('wizPlRing').classList.remove('visible');
+  
+  const svgFill = $('wizPlRingFillSvg');
+  if (svgFill) {
+    svgFill.classList.remove('loading');
+    svgFill.style.strokeDashoffset = '402.12';
+  }
+  
+  const indicator = $('wizPlRingIndicator');
+  const badge = $('wizPlRingBadge');
+  if (indicator && badge) {
+    indicator.style.transform = 'rotate(0deg)';
+    badge.style.transform = 'rotate(0deg)';
+    badge.textContent = '0%';
+  }
+  
+  const labelText = $('wizPlRingLabelText');
+  if (labelText) labelText.textContent = 'VIDEO';
+  
+  $('wizPlRingNum').textContent = '-';
   state.downloading = false;
   state.currentDlId = null;
 }
@@ -1314,9 +1516,11 @@ function hideWizardProgress() {
 function listenWizardProgress(id, url) {
   if (dlEventSource) dlEventSource.close();
 
-  const isPlaylist = checkIsPlaylist(url);
+  const isPlaylist = checkIsPlaylist(url) || $('wizPlRing').classList.contains('visible');
   const plContainer = $('wizPlaylistProgress');
   const stepEls = Array.from($('wizProgress').querySelectorAll('.po-step')).sort((a, b) => parseInt(a.dataset.order || 99) - parseInt(b.dataset.order || 99));
+  const svgFill = $('wizPlRingFillSvg');
+  const ringNum = $('wizPlRingNum');
 
   let _stepTimer = null;
   let _lastStepOrder = -1;
@@ -1381,30 +1585,77 @@ function listenWizardProgress(id, url) {
       const data = JSON.parse(e.data);
       const { stage, message, progress } = data;
 
-      if (['start', 'download', 'extract', 'merge', 'done', 'error', 'cancelled', 'playlist_start', 'playlist_item', 'playlist_progress'].includes(stage)) {
-        if (stage === 'playlist_start' || stage === 'playlist_item' || stage === 'playlist_progress') {
+      if (['start', 'download', 'extract', 'merge', 'done', 'error', 'cancelled', 'playlist_start', 'playlist_item', 'playlist_progress', 'info'].includes(stage)) {
+        if (isPlaylist || stage === 'playlist_start' || stage === 'playlist_item' || stage === 'playlist_progress') {
+          const labelText = $('wizPlRingLabelText');
+
           if (stage === 'playlist_start') {
             $('wizProgressTitle').textContent = 'Downloading Playlist...';
             _currentPlItem = -1;
-          }
+            $('wizProgressSteps').style.display = 'none';
+            $('wizPlRing').classList.add('visible');
+            if (svgFill) {
+              svgFill.style.strokeDashoffset = '402.12';
+              svgFill.classList.remove('loading');
+            }
+            if (labelText) labelText.textContent = 'VIDEO';
+            if (ringNum) ringNum.textContent = '-';
+          } else {
+            // Parse active percentage from structured progress or raw text messages
+            let itemPct = data.progress !== undefined ? data.progress : 0;
+            if (itemPct === 0 && message && message.includes('[download]') && message.includes('%')) {
+              const pctMatch = message.match(/(\d+\.?\d*)%/);
+              if (pctMatch) {
+                itemPct = parseFloat(pctMatch[1]);
+              }
+            }
+            // Fallback: if progress is defined on global payload
+            if (itemPct === 0 && progress !== undefined) {
+              itemPct = progress;
+            }
+            const pct = Math.min(itemPct, 100);
 
-          // Per-item step cycling for playlist
-          if (data.item && data.item !== _currentPlItem) {
-            _currentPlItem = data.item;
-            stepEls.forEach(s => { s.className = 'po-step'; });
-            _lastStepOrder = -1;
-            if (_stepTimer) { clearTimeout(_stepTimer); _stepTimer = null; }
-            activateStep('start');
-          }
+            if (svgFill) {
+              const circumference = 402.12;
+              const offset = circumference - (pct / 100) * circumference;
+              svgFill.style.strokeDashoffset = offset;
+            }
 
-          if (data.progress !== undefined && data.item) {
-            const p = data.progress;
-            let plStep = 'start';
-            if (p >= 3 && p < 70) plStep = 'download';
-            else if (p >= 70 && p < 88) plStep = 'extract';
-            else if (p >= 88 && p < 100) plStep = 'merge';
-            else if (p >= 100) plStep = 'done';
-            activateStep(plStep);
+            // Parse active item number from structured data or raw text messages
+            let activeItem = data.item;
+            if (!activeItem && message) {
+              const itemMatch = message.match(/Downloading item (\d+) of (\d+)/);
+              if (itemMatch) {
+                activeItem = parseInt(itemMatch[1]);
+              }
+            }
+            const finalItem = activeItem || _currentPlItem;
+
+            if (finalItem && finalItem !== -1) {
+              if (finalItem !== _currentPlItem) {
+                _currentPlItem = finalItem;
+                if (ringNum) {
+                  ringNum.textContent = finalItem;
+                  ringNum.classList.remove('pop');
+                  void ringNum.offsetWidth;
+                  ringNum.classList.add('pop');
+                  if (labelText) labelText.textContent = 'VIDEO';
+                }
+              }
+              if (pct >= 100) {
+                if (svgFill) {
+                  svgFill.style.strokeDashoffset = 0;
+                  svgFill.classList.remove('loading');
+                }
+                if (ringNum) {
+                  ringNum.innerHTML = '<i class="fas fa-check" style="font-size:28px;color:var(--green)"></i>';
+                  ringNum.classList.remove('pop');
+                  if (labelText) labelText.textContent = 'COMPLETE';
+                }
+              } else {
+                if (svgFill) svgFill.classList.add('loading');
+              }
+            }
           }
         } else if (stage === 'error') {
           stepEls.forEach(s => { s.classList.remove('active', 'done'); });
@@ -1487,11 +1738,49 @@ function listenWizardProgress(id, url) {
         $('wizProgressDetail').textContent = message.replace(/\[download\]\s*/g, '').trim();
       }
 
+      // Copy exact progress/percentage value from bottom progress to power the playlist SVG ring and rotating indicator badge
+      let currentProgressPct = 0;
+      if (progress !== undefined) {
+        currentProgressPct = progress;
+      } else {
+        const textToSearch = message || $('wizDlSize').textContent || '';
+        const pctMatch = textToSearch.match(/(\d+\.?\d*)%/);
+        if (pctMatch) {
+          currentProgressPct = parseFloat(pctMatch[1]);
+        }
+      }
+
+      if (isPlaylist && $('wizPlRing').classList.contains('visible') && currentProgressPct > 0) {
+        const pct = Math.min(Math.max(currentProgressPct, 0), 100);
+        
+        // 1. Update SVG Fill stroke offset
+        if (svgFill) {
+          const circumference = 402.12;
+          const offset = circumference - (pct / 100) * circumference;
+          svgFill.style.strokeDashoffset = offset;
+          if (pct < 100) svgFill.classList.add('loading');
+          else svgFill.classList.remove('loading');
+        }
+
+        // 2. Update Travelling Indicator & Floating Badge
+        const indicator = $('wizPlRingIndicator');
+        const badge = $('wizPlRingBadge');
+        if (indicator && badge) {
+          const angle = pct * 3.6;
+          indicator.style.transform = `rotate(${angle}deg)`;
+          badge.style.transform = `rotate(${-angle}deg)`;
+          badge.textContent = Math.round(pct) + '%';
+        }
+      }
+
       if (stage === 'done') {
         const pct = 100;
         $('wizProgressBar').style.width = '100%';
         $('wizDlSize').textContent = '100%';
         $('wizDlSpeed').textContent = '';
+        $('wizProgressSteps').style.display = '';
+        $('wizPlRing').classList.remove('visible');
+        if (svgFill) svgFill.classList.remove('loading');
         activateStep('done');
         state.currentDlId = null;
         setTimeout(() => {
@@ -1513,6 +1802,9 @@ function listenWizardProgress(id, url) {
         state.playlistEntries = [];
       } else if (stage === 'error') {
         state.currentDlId = null;
+        $('wizProgressSteps').style.display = '';
+        $('wizPlRing').classList.remove('visible');
+        if (svgFill) svgFill.classList.remove('loading');
         setTimeout(() => {
           showToast(data.message || 'Download failed', 'error');
           hideWizardProgress();
