@@ -908,8 +908,8 @@ body{
       
       <div class="pl-ring-center">
         <div class="pl-center-content">
-          <span class="pl-ring-label-text" id="wizPlRingLabelText">VIDEO</span>
-          <span class="pl-ring-num" id="wizPlRingNum">-</span>
+          <span class="pl-ring-label-text" id="wizPlRingLabelText"></span>
+          <span class="pl-ring-num" id="wizPlRingNum"></span>
         </div>
       </div>
     </div>
@@ -1506,9 +1506,9 @@ function hideWizardProgress() {
   }
   
   const labelText = $('wizPlRingLabelText');
-  if (labelText) labelText.textContent = 'VIDEO';
+  if (labelText) labelText.textContent = '';
   
-  $('wizPlRingNum').textContent = '-';
+  $('wizPlRingNum').textContent = '';
   state.downloading = false;
   state.currentDlId = null;
 }
@@ -1598,8 +1598,8 @@ function listenWizardProgress(id, url) {
               svgFill.style.strokeDashoffset = '402.12';
               svgFill.classList.remove('loading');
             }
-            if (labelText) labelText.textContent = 'VIDEO';
-            if (ringNum) ringNum.textContent = '-';
+            if (labelText) labelText.textContent = '';
+            if (ringNum) ringNum.textContent = '';
           } else {
             // Parse active percentage from structured progress or raw text messages
             let itemPct = data.progress !== undefined ? data.progress : 0;
@@ -1639,7 +1639,7 @@ function listenWizardProgress(id, url) {
                   ringNum.classList.remove('pop');
                   void ringNum.offsetWidth;
                   ringNum.classList.add('pop');
-                  if (labelText) labelText.textContent = 'VIDEO';
+                  if (labelText) labelText.textContent = '';
                 }
               }
               if (pct >= 100) {
@@ -1650,7 +1650,7 @@ function listenWizardProgress(id, url) {
                 if (ringNum) {
                   ringNum.innerHTML = '<i class="fas fa-check" style="font-size:28px;color:var(--green)"></i>';
                   ringNum.classList.remove('pop');
-                  if (labelText) labelText.textContent = 'COMPLETE';
+                  if (labelText) labelText.textContent = '';
                 }
               } else {
                 if (svgFill) svgFill.classList.add('loading');
