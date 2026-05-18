@@ -2278,11 +2278,11 @@ $('settingsModal').addEventListener('click', (e) => {
 });
 
 /* ── Error Modal ── */
-$('closeErrorModal').addEventListener('click', () => { $('errorModal').classList.remove('open'); wizGoTo(3); });
-$('dismissErrorBtn').addEventListener('click', () => { $('errorModal').classList.remove('open'); wizGoTo(3); });
+$('closeErrorModal').addEventListener('click', () => { $('errorModal').classList.remove('open'); wizGoTo(1); });
+$('dismissErrorBtn').addEventListener('click', () => { $('errorModal').classList.remove('open'); wizGoTo(1); });
 $('copyErrorBtn').addEventListener('click', copyErrorDetails);
 $('errorModal').addEventListener('click', (e) => {
-  if (e.target === $('errorModal')) { $('errorModal').classList.remove('open'); wizGoTo(3); }
+  if (e.target === $('errorModal')) { $('errorModal').classList.remove('open'); wizGoTo(1); }
 });
 
 async function loadSettingsUI() {
