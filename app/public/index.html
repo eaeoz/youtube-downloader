@@ -708,6 +708,9 @@ body{
 @keyframes plItemShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 .pl-item.error .pli-num{background:var(--red);color:#fff}
 .pl-item.error .pli-status{color:var(--red)}
+.pl-item.skip{border-color:var(--yellow);background:rgba(245,158,11,0.06)}
+.pl-item.skip .pli-num{background:var(--yellow);color:#fff}
+.pl-item.skip .pli-title{color:var(--yellow)}
 
 /* ── yt-dlp Status Banner ── */
 .ytdlp-banner{
@@ -782,6 +785,32 @@ body{
 .dl-item.err .dli-msg{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--red);cursor:pointer}
 .dl-item.err .dli-msg:hover{color:var(--text)}
 .dl-item.err .dli-time{font-size:10px;color:var(--text3);flex-shrink:0}
+
+/* ── Error Modal ── */
+.modal-error{max-width:520px}
+.modal-error .modal-body{display:flex;flex-direction:column;gap:8px}
+.error-section{
+  padding:10px 12px;
+  border-radius:var(--radius-xs);
+  border:1px solid var(--border);
+  background:var(--bg2);
+}
+.error-section .error-label{
+  font-size:10px;font-weight:600;color:var(--text3);
+  text-transform:uppercase;letter-spacing:0.5px;
+  margin-bottom:6px;display:flex;align-items:center;gap:5px;
+}
+.error-section .error-value{
+  font-size:12px;color:var(--text);line-height:1.5;
+  word-break:break-all;
+}
+.error-section .error-value-url{
+  color:var(--primary);font-size:11px;
+}
+.error-actions{
+  display:flex;gap:8px;margin-top:8px;
+}
+.error-actions .setting-btn{flex:1}
 
 /* ── Update Overlay ── */
 .update-overlay{
@@ -1095,6 +1124,40 @@ body{
         <button class="setting-btn setting-btn-primary" id="updateYtdlpBtn"><i class="fas fa-sync-alt"></i> Update Now</button>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- ERROR MODAL -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="errorModal">
+  <div class="modal modal-error">
+    <div class="modal-header">
+      <h2><i class="fas fa-exclamation-triangle" style="color:var(--red)"></i> Download Error</h2>
+      <button class="modal-close" id="closeErrorModal"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="error-section">
+        <div class="error-label"><i class="fas fa-exclamation-circle"></i> Error Message</div>
+        <div class="error-value" id="errorModalMessage"></div>
+      </div>
+      <div class="error-section">
+        <div class="error-label"><i class="fas fa-link"></i> URL</div>
+        <div class="error-value error-value-url" id="errorModalUrl"></div>
+      </div>
+      <div class="error-section" id="errorModalStageSection">
+        <div class="error-label"><i class="fas fa-tag"></i> Stage</div>
+        <div class="error-value" id="errorModalStage"></div>
+      </div>
+      <div class="error-section" id="errorModalTimeSection">
+        <div class="error-label"><i class="fas fa-clock"></i> Time</div>
+        <div class="error-value" id="errorModalTime"></div>
+      </div>
+      <div class="error-actions">
+        <button class="setting-btn setting-btn-primary" id="copyErrorBtn"><i class="fas fa-copy"></i> Copy Error Details</button>
+        <button class="setting-btn setting-btn-outline" id="dismissErrorBtn"><i class="fas fa-times"></i> Dismiss</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1598,7 +1661,9 @@ async function wizStartDownload() {
   const res = await api(endpoint, { method: 'POST', body: JSON.stringify(payload) });
   if (!res || !res.id) {
     hideWizardProgress();
-    showToast('Failed to start download', 'error');
+    var failMsg = (res && res.error) ? res.error : 'Failed to start download';
+    saveError(failMsg, url, 'start');
+    showErrorModal({ message: failMsg, url: url || '', stage: 'start', time: new Date().toISOString() });
     return;
   }
   state.currentDlId = res.id;
@@ -1687,6 +1752,7 @@ function listenWizardProgress(id, url) {
   let _currentPlItem = -1;
   let _totalItems = getPlaylistTotal() || 0;
   let _hundredCount = 0;
+  let _playlistErrors = [];
 
   function showRingLoading() {
     ringNum.innerHTML = '<div class="spinner pl-ring-spinner"></div>';
@@ -1775,8 +1841,8 @@ function listenWizardProgress(id, url) {
         _totalItems = data.total;
       }
 
-      if (['start', 'download', 'extract', 'merge', 'done', 'error', 'cancelled', 'playlist_start', 'playlist_item', 'playlist_progress', 'info'].includes(stage)) {
-        if (isPlaylist || stage === 'playlist_start' || stage === 'playlist_item' || stage === 'playlist_progress') {
+      if (['start', 'download', 'extract', 'merge', 'done', 'error', 'cancelled', 'playlist_start', 'playlist_item', 'playlist_progress', 'playlist_item_skip', 'info'].includes(stage)) {
+        if (isPlaylist || stage === 'playlist_start' || stage === 'playlist_item' || stage === 'playlist_progress' || stage === 'playlist_item_skip') {
 
           if (stage === 'playlist_start') {
             $('wizProgressTitle').textContent = 'Downloading Playlist...';
@@ -1791,6 +1857,16 @@ function listenWizardProgress(id, url) {
             if (radialFill) radialFill.style.transform = 'scale(0)';
             $('wizPlBurstContainer').innerHTML = '';
             updateRingRemaining();
+          } else if (stage === 'playlist_item_skip') {
+            var skipMsg = data.message || 'Item skipped';
+            _playlistErrors.push(skipMsg);
+            saveError(skipMsg, state.wizUrl, 'playlist_skip');
+            if (plContainer) {
+              var skipItem = document.createElement('div');
+              skipItem.className = 'pl-item skip';
+              skipItem.innerHTML = '<div class="pli-num"><i class="fas fa-exclamation-triangle" style="color:var(--red)"></i></div><div class="pli-title" style="color:var(--red)">' + escapeHtml(skipMsg.substring(0, 60)) + '</div>';
+              plContainer.appendChild(skipItem);
+            }
           } else {
             // Parse active percentage from structured progress or raw text messages
             let itemPct = data.progress !== undefined ? data.progress : 0;
@@ -1845,7 +1921,6 @@ function listenWizardProgress(id, url) {
           errDiv.innerHTML = '<span class="psi"><i class="fas fa-exclamation-circle"></i></span> ' + escapeHtml(errMsg.substring(0, 300));
           $('wizProgressSteps').appendChild(errDiv);
           setTimeout(() => { if (errDiv.parentNode) errDiv.remove(); }, 5000);
-          saveError(data.message || 'Unknown error', state.wizUrl, stage);
         } else if (stage === 'cancelled') {
           state.currentDlId = null;
           setTimeout(() => {
@@ -1972,11 +2047,15 @@ function listenWizardProgress(id, url) {
         $('wizDlSpeed').textContent = '';
         if (isPlaylist) {
           $('wizProgressSteps').style.display = 'none';
-          $('wizProgressTitle').textContent = 'Download Complete!';
+          var hasSkips = _playlistErrors && _playlistErrors.length > 0;
+          $('wizProgressTitle').textContent = hasSkips ? 'Download Complete \u00B7 ' + _playlistErrors.length + ' unavailable' : 'Download Complete!';
+          if (hasSkips) {
+            $('wizProgressTitle').style.color = 'var(--yellow)';
+          }
           const icon = document.querySelector('.po-icon');
           if (icon) {
             icon.className = 'po-icon done';
-            icon.innerHTML = '<i class="fas fa-check-circle"></i>';
+            icon.innerHTML = hasSkips ? '<i class="fas fa-exclamation-triangle" style="color:var(--yellow)"></i>' : '<i class="fas fa-check-circle"></i>';
           }
         } else {
           $('wizProgressSteps').style.display = '';
@@ -1986,7 +2065,19 @@ function listenWizardProgress(id, url) {
         if (svgFill) svgFill.classList.remove('loading');
         state.currentDlId = null;
         setTimeout(() => {
-          showToast('Download complete!', 'success');
+          var hasSkips = _playlistErrors && _playlistErrors.length > 0;
+          if (hasSkips) {
+            hideWizardProgress();
+            showErrorModal({
+              message: _playlistErrors.length + ' videos were unavailable/skipped',
+              url: state.wizUrl || '',
+              stage: 'playlist',
+              time: new Date().toISOString()
+            });
+            _playlistErrors = [];
+          } else {
+            showToast('Download complete!', 'success');
+          }
           hideWizardProgress();
           wizGoTo(1);
           document.querySelectorAll('.choice-card').forEach(c => c.classList.remove('selected'));
@@ -2007,11 +2098,17 @@ function listenWizardProgress(id, url) {
         $('wizProgressSteps').style.display = '';
         $('wizPlRing').classList.remove('visible');
         if (svgFill) svgFill.classList.remove('loading');
-        setTimeout(() => {
-          showToast(data.message || 'Download failed', 'error');
+        var errMsg = data.message || 'Unknown error';
+        saveError(errMsg, state.wizUrl, stage);
+        setTimeout(function () {
           hideWizardProgress();
-          wizGoTo(3);
-        }, 1500);
+          showErrorModal({
+            message: errMsg,
+            url: state.wizUrl || '',
+            stage: stage,
+            time: new Date().toISOString()
+          });
+        }, 500);
         state.playlistEntries = [];
       }
     } catch(_) {}
@@ -2180,6 +2277,14 @@ $('settingsModal').addEventListener('click', (e) => {
   if (e.target === $('settingsModal')) $('settingsModal').classList.remove('open');
 });
 
+/* ── Error Modal ── */
+$('closeErrorModal').addEventListener('click', () => { $('errorModal').classList.remove('open'); wizGoTo(3); });
+$('dismissErrorBtn').addEventListener('click', () => { $('errorModal').classList.remove('open'); wizGoTo(3); });
+$('copyErrorBtn').addEventListener('click', copyErrorDetails);
+$('errorModal').addEventListener('click', (e) => {
+  if (e.target === $('errorModal')) { $('errorModal').classList.remove('open'); wizGoTo(3); }
+});
+
 async function loadSettingsUI() {
   const [dlHistory, errors, settings] = await Promise.all([
     api('/api/downloads'),
@@ -2241,6 +2346,52 @@ async function loadDlHistory() {
 
 async function saveError(message, url, stage) {
   await api('/api/errors', { method: 'POST', body: JSON.stringify({ message, url, stage }) });
+}
+
+var _lastErrorData = null;
+
+function showErrorModal(data) {
+  _lastErrorData = data;
+  $('errorModalMessage').textContent = data.message || 'Unknown error';
+  $('errorModalUrl').textContent = data.url || 'N/A';
+  var stageEl = $('errorModalStage');
+  var timeEl = $('errorModalTime');
+  var stageSection = $('errorModalStageSection');
+  var timeSection = $('errorModalTimeSection');
+  if (data.stage) {
+    stageEl.textContent = data.stage;
+    stageSection.style.display = '';
+  } else {
+    stageSection.style.display = 'none';
+  }
+  if (data.time) {
+    timeEl.textContent = data.time;
+    timeSection.style.display = '';
+  } else {
+    timeEl.textContent = new Date().toLocaleString();
+    timeSection.style.display = '';
+  }
+  $('errorModal').classList.add('open');
+  loadErrorLog();
+}
+
+function copyErrorDetails() {
+  var msg = $('errorModalMessage').textContent;
+  var url = $('errorModalUrl').textContent;
+  var stage = $('errorModalStage').textContent;
+  var time = $('errorModalTime').textContent;
+  var text = 'Error: ' + msg + '\nURL: ' + url + '\nStage: ' + stage + '\nTime: ' + time;
+  navigator.clipboard.writeText(text).then(function () {
+    showToast('Error details copied!', 'success');
+  }).catch(function () {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Error details copied!', 'success');
+  });
 }
 
 function renderErrorLog(list) {

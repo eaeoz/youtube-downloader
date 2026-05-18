@@ -570,7 +570,11 @@ app.post('/api/download-playlist', async (req, res) => {
                 }
                 continue;
               }
-              emitter.emit('progress', { stage: 'info', message: line.trim() });
+              if (/(?:WARNING|ERROR):|Skipping|Video unavailable|unavailable|private|removed|deleted/i.test(line) && !line.includes('[download]')) {
+                emitter.emit('progress', { stage: 'playlist_item_skip', message: line.trim() });
+              } else {
+                emitter.emit('progress', { stage: 'info', message: line.trim() });
+              }
             }
           });
 
