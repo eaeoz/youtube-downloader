@@ -510,6 +510,13 @@ body{
   display: inline-block;
 }
 
+.pl-ring-num .pl-ring-spinner {
+  width: 28px; height: 28px;
+  border-width: 3px;
+  border-color: var(--border);
+  border-top-color: var(--primary);
+}
+
 .pl-ring-num.pop {
   animation: plNumPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
@@ -1013,7 +1020,7 @@ body{
       
       <div class="pl-ring-center">
         <div class="pl-center-content">
-          <span class="pl-ring-num" id="wizPlRingNum">?/?</span>
+          <span class="pl-ring-num" id="wizPlRingNum"><div class="spinner pl-ring-spinner"></div></span>
         </div>
       </div>
     </div>
@@ -1566,12 +1573,18 @@ async function wizStartDownload() {
     const radialFill = $('wizPlRadialFill');
     if (radialFill) radialFill.style.transform = 'scale(0)';
     $('wizPlBurstContainer').innerHTML = '';
-    // Ensure entries are loaded so we show actual total, not ?/?
+    // Ensure entries are loaded so we show actual total, not loading spinner
     if (state.playlistEntries.length === 0) {
       await fetchPlaylistEntries(url);
     }
     const total = getPlaylistTotal();
-    if ($('wizPlRingNum')) $('wizPlRingNum').textContent = total + '/' + total;
+    if ($('wizPlRingNum')) {
+      if (total > 0) {
+        $('wizPlRingNum').textContent = total + '/' + total;
+      } else {
+        $('wizPlRingNum').innerHTML = '<div class="spinner pl-ring-spinner"></div>';
+      }
+    }
   }
 
   const endpoint = isPlaylist ? '/api/download-playlist' : '/api/download';
@@ -1622,7 +1635,11 @@ function hideWizardProgress() {
   }
   
   const hideTotal = getPlaylistTotal();
-  $('wizPlRingNum').textContent = hideTotal > 0 ? hideTotal + '/' + hideTotal : '?/?';
+  if (hideTotal > 0) {
+    $('wizPlRingNum').textContent = hideTotal + '/' + hideTotal;
+  } else {
+    $('wizPlRingNum').innerHTML = '<div class="spinner pl-ring-spinner"></div>';
+  }
   $('wizPlRingNum').classList.remove('pop');
   const radialFill = $('wizPlRadialFill');
   if (radialFill) radialFill.style.transform = 'scale(0)';
@@ -1658,9 +1675,14 @@ function listenWizardProgress(id, url) {
   let _currentPlItem = -1;
   let _totalItems = getPlaylistTotal() || 0;
 
+  function showRingLoading() {
+    ringNum.innerHTML = '<div class="spinner pl-ring-spinner"></div>';
+    ringNum.classList.remove('pop');
+  }
+
   function updateRingRemaining() {
     if (!ringNum) return;
-    if (_totalItems === 0) { ringNum.textContent = '?/?'; return; }
+    if (_totalItems === 0) { showRingLoading(); return; }
     const doneItems = plContainer.querySelectorAll('.pl-item.done').length;
     const remaining = Math.max(0, _totalItems - doneItems);
     if (remaining === 0) {
