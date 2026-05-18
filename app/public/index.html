@@ -354,6 +354,12 @@ body{
   font-size:40px;color:var(--primary);
   animation:pulse 1.5s ease-in-out infinite;
 }
+.progress-overlay .po-icon.done{
+  animation:none;
+}
+.progress-overlay .po-icon.done i{
+  color:var(--green);
+}
 @keyframes pulse{
   0%,100%{opacity:1;transform:scale(1)}
   50%{opacity:0.6;transform:scale(1.1)}
@@ -1608,6 +1614,11 @@ function showWizardProgress() {
   $('wizProgressSteps').style.display = '';
   $('wizPlRing').classList.remove('visible');
   ov.querySelectorAll('.po-step').forEach(s => { s.className = 'po-step'; });
+  const poIcon = $('wizProgress').querySelector('.po-icon');
+  if (poIcon) {
+    poIcon.className = 'po-icon';
+    poIcon.innerHTML = '<i class="fas fa-circle-notch"></i>';
+  }
   _lastStepOrder = -1;
   _stepTimer = null;
   const start = ov.querySelector('[data-step="start"]');
@@ -1952,10 +1963,20 @@ function listenWizardProgress(id, url) {
         $('wizProgressBar').style.width = '100%';
         $('wizDlSize').textContent = '100%';
         $('wizDlSpeed').textContent = '';
-        $('wizProgressSteps').style.display = '';
+        if (isPlaylist) {
+          $('wizProgressSteps').style.display = 'none';
+          $('wizProgressTitle').textContent = 'Download Complete!';
+          const icon = document.querySelector('.po-icon');
+          if (icon) {
+            icon.className = 'po-icon done';
+            icon.innerHTML = '<i class="fas fa-check-circle"></i>';
+          }
+        } else {
+          $('wizProgressSteps').style.display = '';
+          activateStep('done');
+        }
         $('wizPlRing').classList.remove('visible');
         if (svgFill) svgFill.classList.remove('loading');
-        activateStep('done');
         state.currentDlId = null;
         setTimeout(() => {
           showToast('Download complete!', 'success');
