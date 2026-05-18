@@ -26,6 +26,11 @@
     "directories": {
       "output": "dist"
     },
+    "files": [
+      "app/**/*",
+      "data/**/*",
+      "package.json"
+    ],
     "extraResources": [
       {
         "from": "bin",

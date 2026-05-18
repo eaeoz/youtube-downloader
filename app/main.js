@@ -12,7 +12,7 @@ let isQuitting = false;
 const PORT = 3777;
 
 function getAppPath() {
-  return app.isPackaged ? path.join(process.resourcesPath, 'app') : __dirname;
+  return __dirname;
 }
 
 function getBinPath() {
@@ -295,15 +295,16 @@ function createTray() {
   });
 }
 
-ipcMain.handle('select-folder', async () => {
-  if (!mainWindow) return null;
-  const result = await dialog.showOpenDialog(mainWindow, {
+ipcMain.handle('select-folder', async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+  if (!win) return null;
+  const result = await dialog.showOpenDialog(win, {
     properties: ['openDirectory']
   });
   return result.canceled ? null : result.filePaths[0];
 });
 
-ipcMain.handle('open-path', async (_e, targetPath) => {
+ipcMain.handle('open-path', async (event, targetPath) => {
   try {
     if (targetPath && fs.existsSync(targetPath)) {
       const stat = fs.statSync(targetPath);

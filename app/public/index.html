@@ -2180,10 +2180,13 @@ $('settingsModal').addEventListener('click', (e) => {
 });
 
 async function loadSettingsUI() {
-  const [dlHistory, errors] = await Promise.all([api('/api/downloads'), api('/api/errors')]);
+  const [dlHistory, errors, settings] = await Promise.all([
+    api('/api/downloads'),
+    api('/api/errors'),
+    api('/api/settings')
+  ]);
   renderDlHistory(dlHistory || []);
   renderErrorLog(errors || []);
-  const settings = await api('/api/settings');
   if (settings && settings.downloadPath) $('downloadPath').value = settings.downloadPath;
   else $('downloadPath').value = 'downloads/';
   checkYtdlpStatus();
@@ -2271,8 +2274,9 @@ $('clearDlBtn').addEventListener('click', async () => {
 
 $('browsePath').addEventListener('click', async () => {
   let folder = null;
-  if (window.electronAPI) folder = await window.electronAPI.selectFolder();
-  else folder = prompt('Enter download folder path:');
+  if (window.electronAPI) {
+    try { folder = await window.electronAPI.selectFolder(); } catch (_) { folder = prompt('Enter download folder path:'); }
+  } else folder = prompt('Enter download folder path:');
   if (folder) {
     await api('/api/settings', { method: 'POST', body: JSON.stringify({ downloadPath: folder }) });
     $('downloadPath').value = folder;
