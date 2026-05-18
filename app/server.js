@@ -53,7 +53,14 @@ function loadDownloadsState() {
   return [];
 }
 function saveDownloadsState(downloads) {
-  fs.writeFileSync(DOWNLOADS_STATE_FILE, JSON.stringify(downloads, null, 2));
+  try {
+    const dir = path.dirname(DOWNLOADS_STATE_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(DOWNLOADS_STATE_FILE, JSON.stringify(downloads, null, 2));
+    console.log('[history] saved to', DOWNLOADS_STATE_FILE, 'count:', downloads.length);
+  } catch (e) {
+    console.error('[history] save failed:', e.message);
+  }
 }
 
 function loadErrorsState() {
@@ -358,6 +365,19 @@ app.post('/api/download', async (req, res) => {
   const emitter = new EventEmitter();
   downloadEmitters[id] = emitter;
 
+  const isAudio = audioOnly || mode === 'audio' || format === 'mp3';
+
+  const state = loadDownloadsState();
+  state.unshift({
+    id,
+    name: url,
+    path: '',
+    url,
+    format: format || (isAudio ? 'mp3' : 'video'),
+    downloadedAt: new Date().toISOString()
+  });
+  saveDownloadsState(state);
+
   res.json({ id });
 
   process.nextTick(async () => {
@@ -365,7 +385,6 @@ app.post('/api/download', async (req, res) => {
       const ytPath = getYtdlpPath();
       const ffmpegPath = FFMPEG_DIR;
       const dlDir = getDownloadsDir();
-      const isAudio = audioOnly || mode === 'audio' || format === 'mp3';
       const ab = parseInt(audioBitrate) || 0;
 
       const baseArgs = [
@@ -434,14 +453,11 @@ app.post('/api/download', async (req, res) => {
 
       if (finalPath) {
         const state = loadDownloadsState();
-        state.unshift({
-          id,
-          name: path.basename(finalPath),
-          path: finalPath,
-          url,
-          format: format || (isAudio ? 'mp3' : 'video'),
-          downloadedAt: new Date().toISOString()
-        });
+        const idx = state.findIndex(e => e.id === id);
+        if (idx !== -1) {
+          state[idx].name = path.basename(finalPath);
+          state[idx].path = finalPath;
+        }
         saveDownloadsState(state);
       }
 
@@ -461,7 +477,20 @@ app.post('/api/download-playlist', async (req, res) => {
   const emitter = new EventEmitter();
   downloadEmitters[id] = emitter;
 
+  const state = loadDownloadsState();
+  state.unshift({
+    id,
+    name: `Playlist: ${url}`,
+    path: '',
+    url,
+    format: audioOnly ? 'mp3' : 'video',
+    downloadedAt: new Date().toISOString()
+  });
+  saveDownloadsState(state);
+
   res.json({ id });
+
+  const completedFiles = [];
 
   process.nextTick(async () => {
     try {
@@ -511,6 +540,7 @@ app.post('/api/download-playlist', async (req, res) => {
                 const dir = path.dirname(text);
                 if (fs.existsSync(dir)) playlistDirs[id] = dir;
               }
+              if (fs.existsSync(text)) completedFiles.push(text);
               emitter.emit('progress', { stage: 'file_complete', message: `Completed: ${text}`, file: text });
             }
           });
@@ -561,6 +591,21 @@ app.post('/api/download-playlist', async (req, res) => {
 
       delete downloadProcs[id];
       delete playlistDirs[id];
+
+      if (completedFiles.length > 0) {
+        const state = loadDownloadsState();
+        for (const filePath of completedFiles) {
+          state.unshift({
+            id: `${id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            name: path.basename(filePath),
+            path: filePath,
+            url,
+            format: audioOnly ? 'mp3' : 'video',
+            downloadedAt: new Date().toISOString()
+          });
+        }
+        saveDownloadsState(state);
+      }
 
       const hadError = result.code > 1 || (result.code < 0);
       const someUnavailable = result.code === 1;
@@ -862,6 +907,16 @@ app.post('/api/settings', (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+app.get('/api/history-debug', (req, res) => {
+  res.json({
+    stateFile: DOWNLOADS_STATE_FILE,
+    stateFileExists: fs.existsSync(DOWNLOADS_STATE_FILE),
+    electronUserdata: process.env.ELECTRON_USERDATA || '(not set)',
+    settingsFile: SETTINGS_FILE,
+    downloadsDir: getDownloadsDir()
+  });
 });
 
 app.get('/api/ytdlp-status', (req, res) => {

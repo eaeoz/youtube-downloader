@@ -777,6 +777,7 @@ body{
 .dl-item .dli-btn{background:none;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:4px;border-radius:4px;transition:all 0.15s}
 .dl-item .dli-btn:hover{background:var(--surface2)}
 .dl-item .dli-btn.rm:hover{color:var(--red)}
+.dl-item .dli-btn.cp-url:hover{color:var(--accent)}
 .dl-item.err{border-color:rgba(239,68,68,0.2);background:rgba(239,68,68,0.04)}
 .dl-item.err .dli-msg{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--red);cursor:pointer}
 .dl-item.err .dli-msg:hover{color:var(--text)}
@@ -2204,10 +2205,27 @@ function renderDlHistory(list) {
       <span class="dli-name" title="${d.name}">${d.name || 'Unknown'}</span>
       <span style="font-size:10px;color:var(--text3);flex-shrink:0">${d.downloadedAt ? new Date(d.downloadedAt).toLocaleDateString() : ''}</span>
       <div class="dli-actions">
+        <button class="dli-btn cp-url" data-url="${d.url}" title="Copy URL"><i class="fas fa-link"></i></button>
         <button class="dli-btn rm" data-id="${d.id}" title="Remove"><i class="fas fa-times"></i></button>
       </div>
     </div>
   `).join('');
+  container.querySelectorAll('.dli-btn.cp-url').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(btn.dataset.url);
+        showToast('URL copied!', 'success');
+      } catch (_) {
+        const ta = document.createElement('textarea');
+        ta.value = btn.dataset.url;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('URL copied!', 'success');
+      }
+    });
+  });
   container.querySelectorAll('.dli-btn.rm').forEach(btn => {
     btn.addEventListener('click', async () => {
       await api('/api/downloads/remove', { method: 'POST', body: JSON.stringify({ id: btn.dataset.id }) });
