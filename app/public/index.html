@@ -474,6 +474,7 @@ body{
   align-items: center;
   justify-content: center;
   pointer-events: none;
+  z-index: 2;
 }
 
 .pl-center-content {
@@ -482,6 +483,10 @@ body{
   align-items: center;
   justify-content: center;
   text-align: center;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  border-radius: 50%;
+  width: 90px;
+  height: 90px;
 }
 
 .pl-ring-label-text {
@@ -495,13 +500,14 @@ body{
 }
 
 .pl-ring-num {
-  font-size: 38px;
+  font-size: 34px;
   font-weight: 800;
   color: var(--primary);
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color var(--transition);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   text-shadow: 0 0 10px var(--primary-glow);
+  display: inline-block;
 }
 
 .pl-ring-num.pop {
@@ -545,6 +551,96 @@ body{
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+
+/* ── Radial Fill (grows from center outward) ── */
+.pl-radial-fill {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 130px;
+  height: 130px;
+  margin: -65px 0 0 -65px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(239,68,68,0.35), rgba(6,182,212,0.1) 50%, transparent 70%);
+  transform: scale(0);
+  transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+}
+
+/* ── Burst Rings (on item complete) ── */
+.pl-burst-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1;
+}
+.pl-burst-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 12px rgba(6,182,212,0.6), 0 0 30px rgba(239,68,68,0.2);
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.pl-burst-ring.animate {
+  animation: burstExpand 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes burstExpand {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0.9;
+    border-width: 3px;
+    border-color: var(--accent);
+    box-shadow: 0 0 20px rgba(6,182,212,0.8);
+  }
+  40% {
+    opacity: 0.6;
+    border-color: var(--primary);
+  }
+  100% {
+    width: 130px;
+    height: 130px;
+    opacity: 0;
+    border-width: 1px;
+    border-color: var(--primary);
+    box-shadow: 0 0 5px rgba(239,68,68,0.1);
+  }
+}
+
+/* ── Subtle continuous pulse during download ── */
+.pl-pulse-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  border: 1.5px solid rgba(239,68,68,0.25);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: pulseRing 2.4s ease-out infinite;
+}
+@keyframes pulseRing {
+  0% {
+    width: 20px;
+    height: 20px;
+    opacity: 0.5;
+    border-width: 2px;
+  }
+  100% {
+    width: 130px;
+    height: 130px;
+    opacity: 0;
+    border-width: 0.5px;
+  }
 }
 
 
@@ -887,7 +983,7 @@ body{
             <stop offset="100%" stop-color="var(--accent)" />
           </linearGradient>
         </defs>
-        <!-- Outer High-Tech Rotating Dashed Ring -->
+        <!-- Outer Rotating Dashed Ring -->
         <circle class="pl-ring-dash" cx="80" cy="80" r="74" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="4 6" fill="none" />
         
         <!-- Track Circle -->
@@ -899,6 +995,15 @@ body{
                 stroke-dasharray="402.12" stroke-dashoffset="402.12" transform="rotate(-90 80 80)" />
       </svg>
 
+      <!-- Radial Fill (grows from center outward with progress) -->
+      <div class="pl-radial-fill" id="wizPlRadialFill"></div>
+
+      <!-- Burst Rings (on item complete) -->
+      <div class="pl-burst-container" id="wizPlBurstContainer"></div>
+
+      <!-- Subtle pulse during active download -->
+      <div class="pl-pulse-ring" id="wizPlPulseRing"></div>
+
       <!-- Travelling Indicator with Floating Percentage -->
       <div class="pl-ring-indicator" id="wizPlRingIndicator">
         <div class="pl-ring-badge-wrap">
@@ -908,8 +1013,7 @@ body{
       
       <div class="pl-ring-center">
         <div class="pl-center-content">
-          <span class="pl-ring-label-text" id="wizPlRingLabelText"></span>
-          <span class="pl-ring-num" id="wizPlRingNum"></span>
+          <span class="pl-ring-num" id="wizPlRingNum">?/?</span>
         </div>
       </div>
     </div>
@@ -1459,6 +1563,15 @@ async function wizStartDownload() {
     $('wizProgressSteps').style.display = 'none';
     $('wizPlRing').classList.add('visible');
     $('wizDlSize').textContent = '';
+    const radialFill = $('wizPlRadialFill');
+    if (radialFill) radialFill.style.transform = 'scale(0)';
+    $('wizPlBurstContainer').innerHTML = '';
+    // Ensure entries are loaded so we show actual total, not ?/?
+    if (state.playlistEntries.length === 0) {
+      await fetchPlaylistEntries(url);
+    }
+    const total = getPlaylistTotal();
+    if ($('wizPlRingNum')) $('wizPlRingNum').textContent = total + '/' + total;
   }
 
   const endpoint = isPlaylist ? '/api/download-playlist' : '/api/download';
@@ -1478,6 +1591,9 @@ function showWizardProgress() {
   $('wizProgressTitle').textContent = `${state.wizType === 'audio' ? 'Downloading Audio' : 'Downloading Video'}...`;
   $('wizProgressBar').style.width = '0%';
   $('wizProgressDetail').textContent = '';
+  // Default to single-video mode: steps visible, ring hidden
+  $('wizProgressSteps').style.display = '';
+  $('wizPlRing').classList.remove('visible');
   ov.querySelectorAll('.po-step').forEach(s => { s.className = 'po-step'; });
   _lastStepOrder = -1;
   _stepTimer = null;
@@ -1505,12 +1621,27 @@ function hideWizardProgress() {
     badge.textContent = '0%';
   }
   
-  const labelText = $('wizPlRingLabelText');
-  if (labelText) labelText.textContent = '';
-  
-  $('wizPlRingNum').textContent = '';
+  const hideTotal = getPlaylistTotal();
+  $('wizPlRingNum').textContent = hideTotal > 0 ? hideTotal + '/' + hideTotal : '?/?';
+  $('wizPlRingNum').classList.remove('pop');
+  const radialFill = $('wizPlRadialFill');
+  if (radialFill) radialFill.style.transform = 'scale(0)';
+  const burstContainer = $('wizPlBurstContainer');
+  if (burstContainer) burstContainer.innerHTML = '';
   state.downloading = false;
   state.currentDlId = null;
+}
+
+function getPlaylistTotal() {
+  const entriesLen = state.playlistEntries.length;
+  if (entriesLen === 0) return 0;
+  const startInput = document.querySelector('#wizPlRange .pl-range-start');
+  const endInput = document.querySelector('#wizPlRange .pl-range-end');
+  const startVal = startInput ? parseInt(startInput.value) : NaN;
+  const endVal = endInput ? parseInt(endInput.value) : NaN;
+  const start = !isNaN(startVal) && startVal > 0 ? startVal : 1;
+  const end = !isNaN(endVal) && endVal > 0 ? endVal : entriesLen;
+  return end >= start ? end - start + 1 : entriesLen;
 }
 
 function listenWizardProgress(id, url) {
@@ -1521,11 +1652,27 @@ function listenWizardProgress(id, url) {
   const stepEls = Array.from($('wizProgress').querySelectorAll('.po-step')).sort((a, b) => parseInt(a.dataset.order || 99) - parseInt(b.dataset.order || 99));
   const svgFill = $('wizPlRingFillSvg');
   const ringNum = $('wizPlRingNum');
-  const labelText = $('wizPlRingLabelText');
 
   let _stepTimer = null;
   let _lastStepOrder = -1;
   let _currentPlItem = -1;
+  let _totalItems = getPlaylistTotal() || 0;
+
+  function updateRingRemaining() {
+    if (!ringNum) return;
+    if (_totalItems === 0) { ringNum.textContent = '?/?'; return; }
+    const doneItems = plContainer.querySelectorAll('.pl-item.done').length;
+    const remaining = Math.max(0, _totalItems - doneItems);
+    if (remaining === 0) {
+      ringNum.innerHTML = '<i class="fas fa-check" style="color:var(--green);font-size:28px"></i>';
+      ringNum.classList.remove('pop');
+    } else {
+      ringNum.textContent = remaining + '/' + _totalItems;
+      ringNum.classList.remove('pop');
+      void ringNum.offsetWidth;
+      ringNum.classList.add('pop');
+    }
+  }
 
   function activateStep(stageName) {
     const target = stepEls.find(s => s.dataset.step === stageName);
@@ -1586,6 +1733,11 @@ function listenWizardProgress(id, url) {
       const data = JSON.parse(e.data);
       const { stage, message, progress } = data;
 
+      // Use server-provided total whenever available (handles async playlist entries)
+      if (data.total && data.total > 0) {
+        _totalItems = data.total;
+      }
+
       if (['start', 'download', 'extract', 'merge', 'done', 'error', 'cancelled', 'playlist_start', 'playlist_item', 'playlist_progress', 'info'].includes(stage)) {
         if (isPlaylist || stage === 'playlist_start' || stage === 'playlist_item' || stage === 'playlist_progress') {
 
@@ -1598,8 +1750,10 @@ function listenWizardProgress(id, url) {
               svgFill.style.strokeDashoffset = '402.12';
               svgFill.classList.remove('loading');
             }
-            if (labelText) labelText.textContent = '';
-            if (ringNum) ringNum.textContent = '';
+            const radialFill = $('wizPlRadialFill');
+            if (radialFill) radialFill.style.transform = 'scale(0)';
+            $('wizPlBurstContainer').innerHTML = '';
+            updateRingRemaining();
           } else {
             // Parse active percentage from structured progress or raw text messages
             let itemPct = data.progress !== undefined ? data.progress : 0;
@@ -1621,38 +1775,23 @@ function listenWizardProgress(id, url) {
               svgFill.style.strokeDashoffset = offset;
             }
 
-            // Parse active item number from structured data or raw text messages
+            // Track current item number
             let activeItem = data.item;
             if (!activeItem && message) {
               const itemMatch = message.match(/Downloading item (\d+) of (\d+)/);
-              if (itemMatch) {
-                activeItem = parseInt(itemMatch[1]);
-              }
+              if (itemMatch) activeItem = parseInt(itemMatch[1]);
             }
             const finalItem = activeItem || _currentPlItem;
 
             if (finalItem && finalItem !== -1) {
               if (finalItem !== _currentPlItem) {
                 _currentPlItem = finalItem;
-                if (ringNum) {
-                  const doneItems = plContainer.querySelectorAll('.pl-item.done').length;
-                  const remaining = Math.max(0, (data.total || 0) - doneItems);
-                  ringNum.textContent = remaining;
-                  ringNum.classList.remove('pop');
-                  void ringNum.offsetWidth;
-                  ringNum.classList.add('pop');
-                  if (labelText) labelText.textContent = 'REMAINING';
-                }
               }
+              updateRingRemaining();
               if (pct >= 100) {
                 if (svgFill) {
                   svgFill.style.strokeDashoffset = 0;
                   svgFill.classList.remove('loading');
-                }
-                if (ringNum) {
-                  ringNum.innerHTML = '<i class="fas fa-check" style="font-size:28px;color:var(--green)"></i>';
-                  ringNum.classList.remove('pop');
-                  if (labelText) labelText.textContent = '';
                 }
               } else {
                 if (svgFill) svgFill.classList.add('loading');
@@ -1703,22 +1842,15 @@ function listenWizardProgress(id, url) {
         if (stage === 'file_complete' && data.file) {
           const fname = data.file.split('\\').pop().split('/').pop();
           addPlaylistItemDone(plContainer, fname);
-          if (data.total) {
-            const doneItems = plContainer.querySelectorAll('.pl-item.done').length;
-            const remaining = Math.max(0, data.total - doneItems);
-            if (ringNum) {
-              ringNum.textContent = remaining;
-              ringNum.classList.remove('pop');
-              void ringNum.offsetWidth;
-              ringNum.classList.add('pop');
-            }
-            if (labelText) labelText.textContent = remaining > 0 ? 'REMAINING' : '';
-          }
+          updateRingRemaining();
+          triggerBurst();
+          updateRadialFill(plContainer, _totalItems);
         }
         if (stage === 'playlist_progress' && data.item && data.total) {
           const doneItems = plContainer.querySelectorAll('.pl-item.done').length;
           $('wizProgressDetail').textContent = `Item ${data.item} of ${data.total} \u00B7 ${doneItems} done \u00B7 ${data.speed || ''}`;
           $('wizDlSize').textContent = (data.progress !== undefined ? Math.round(data.progress) + '%' : '');
+          updateRadialFill(plContainer, _totalItems);
         }
         if (stage === 'playlist_start') {
           plContainer.innerHTML = '';
@@ -1763,26 +1895,33 @@ function listenWizardProgress(id, url) {
         }
       }
 
-      if (isPlaylist && $('wizPlRing').classList.contains('visible') && currentProgressPct > 0) {
-        const pct = Math.min(Math.max(currentProgressPct, 0), 100);
+      if (isPlaylist && $('wizPlRing').classList.contains('visible')) {
+        updateRingRemaining();
         
-        // 1. Update SVG Fill stroke offset
-        if (svgFill) {
-          const circumference = 402.12;
-          const offset = circumference - (pct / 100) * circumference;
-          svgFill.style.strokeDashoffset = offset;
-          if (pct < 100) svgFill.classList.add('loading');
-          else svgFill.classList.remove('loading');
-        }
+        if (currentProgressPct > 0) {
+          const pct = Math.min(Math.max(currentProgressPct, 0), 100);
+          
+          // 1. Update SVG Fill stroke offset
+          if (svgFill) {
+            const circumference = 402.12;
+            const offset = circumference - (pct / 100) * circumference;
+            svgFill.style.strokeDashoffset = offset;
+            if (pct < 100) svgFill.classList.add('loading');
+            else svgFill.classList.remove('loading');
+          }
 
-        // 2. Update Travelling Indicator & Floating Badge
-        const indicator = $('wizPlRingIndicator');
-        const badge = $('wizPlRingBadge');
-        if (indicator && badge) {
-          const angle = pct * 3.6;
-          indicator.style.transform = `rotate(${angle}deg)`;
-          badge.style.transform = `rotate(${-angle}deg)`;
-          badge.textContent = Math.round(pct) + '%';
+          // Radial fill grows from center outward
+          updateRadialFill(plContainer, _totalItems);
+
+          // 2. Update Travelling Indicator & Floating Badge
+          const indicator = $('wizPlRingIndicator');
+          const badge = $('wizPlRingBadge');
+          if (indicator && badge) {
+            const angle = pct * 3.6;
+            indicator.style.transform = `rotate(${angle}deg)`;
+            badge.style.transform = `rotate(${-angle}deg)`;
+            badge.textContent = Math.round(pct) + '%';
+          }
         }
       }
 
@@ -1833,6 +1972,25 @@ function listenWizardProgress(id, url) {
       setTimeout(hideWizardProgress, 1000);
     }
   };
+}
+
+function triggerBurst() {
+  const container = $('wizPlBurstContainer');
+  if (!container) return;
+  const ring = document.createElement('div');
+  ring.className = 'pl-burst-ring';
+  container.appendChild(ring);
+  requestAnimationFrame(() => ring.classList.add('animate'));
+  ring.addEventListener('animationend', () => ring.remove(), { once: true });
+}
+
+function updateRadialFill(plContainer, totalItems) {
+  const radialFill = $('wizPlRadialFill');
+  if (!radialFill) return;
+  const doneItems = plContainer.querySelectorAll('.pl-item.done').length;
+  const total = totalItems || 1;
+  const scale = Math.min(doneItems / total, 1);
+  radialFill.style.transform = `scale(${scale})`;
 }
 
 function updatePlaylistItem(container, data) {
