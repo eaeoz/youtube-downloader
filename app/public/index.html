@@ -1701,7 +1701,8 @@ function listenWizardProgress(id, url) {
       ringNum.innerHTML = '<i class="fas fa-check" style="color:var(--green);font-size:28px"></i>';
       ringNum.classList.remove('pop');
     } else {
-      const displayVal = Math.max(1, _totalItems - Math.floor(_hundredCount / 2));
+      const divisor = state.wizType === 'audio' ? 1 : 2;
+      const displayVal = Math.max(1, _totalItems - Math.floor(_hundredCount / divisor));
       ringNum.textContent = displayVal + '/' + _totalItems;
       ringNum.classList.remove('pop');
       void ringNum.offsetWidth;

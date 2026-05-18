@@ -217,14 +217,35 @@ function createWindow() {
 
 function createTray() {
   const appPath = getAppPath();
-  const icoPath = path.join(appPath, '..', 'data', 'icon.ico');
   const pngPath = path.join(appPath, '..', 'data', 'icon.png');
-  const traySrc = fs.existsSync(icoPath) ? icoPath : fs.existsSync(pngPath) ? pngPath : null;
+  const icoPath = path.join(appPath, '..', 'data', 'icon.ico');
   let trayIcon;
-  if (traySrc) {
-    trayIcon = nativeImage.createFromPath(traySrc).resize({ width: 16, height: 16 });
-  } else {
-    trayIcon = nativeImage.createEmpty();
+  if (fs.existsSync(pngPath)) {
+    trayIcon = nativeImage.createFromPath(pngPath);
+    if (!trayIcon.isEmpty()) {
+      trayIcon = trayIcon.resize({ width: 16, height: 16 });
+    } else {
+      trayIcon = null;
+    }
+  }
+  if (!trayIcon && fs.existsSync(icoPath)) {
+    trayIcon = nativeImage.createFromPath(icoPath);
+    if (trayIcon.isEmpty()) trayIcon = null;
+  }
+  if (!trayIcon || trayIcon.isEmpty()) {
+    const sz = 16;
+    const buf = Buffer.alloc(sz * sz * 4, 0);
+    for (let y = 0; y < sz; y++) {
+      for (let x = 0; x < sz; x++) {
+        const cx = sz / 2, cy = sz / 2, r = 6;
+        const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+        if (dist <= r) {
+          const i = (y * sz + x) * 4;
+          buf[i] = 239; buf[i + 1] = 68; buf[i + 2] = 68; buf[i + 3] = 255;
+        }
+      }
+    }
+    trayIcon = nativeImage.createFromBuffer(buf, { width: sz, height: sz });
   }
 
   tray = new Tray(trayIcon);
