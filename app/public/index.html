@@ -1685,6 +1685,7 @@ function listenWizardProgress(id, url) {
   let _lastStepOrder = -1;
   let _currentPlItem = -1;
   let _totalItems = getPlaylistTotal() || 0;
+  let _hundredCount = 0;
 
   function showRingLoading() {
     ringNum.innerHTML = '<div class="spinner pl-ring-spinner"></div>';
@@ -1700,7 +1701,8 @@ function listenWizardProgress(id, url) {
       ringNum.innerHTML = '<i class="fas fa-check" style="color:var(--green);font-size:28px"></i>';
       ringNum.classList.remove('pop');
     } else {
-      ringNum.textContent = remaining + '/' + _totalItems;
+      const displayVal = Math.max(1, _totalItems - Math.floor(_hundredCount / 2));
+      ringNum.textContent = displayVal + '/' + _totalItems;
       ringNum.classList.remove('pop');
       void ringNum.offsetWidth;
       ringNum.classList.add('pop');
@@ -1951,9 +1953,12 @@ function listenWizardProgress(id, url) {
           const badge = $('wizPlRingBadge');
           if (indicator && badge) {
             const angle = pct * 3.6;
+            const wasHundred = badge.textContent === '100%';
+            const newText = Math.round(pct) + '%';
             indicator.style.transform = `rotate(${angle}deg)`;
             badge.style.transform = `rotate(${-angle}deg)`;
-            badge.textContent = Math.round(pct) + '%';
+            badge.textContent = newText;
+            if (newText === '100%' && !wasHundred) _hundredCount++;
           }
         }
       }
