@@ -2308,7 +2308,7 @@ function renderDlHistory(list) {
     <div class="dl-item">
       <i class="fas fa-file-video" style="color:var(--accent)"></i>
       <span class="dli-name" title="${d.name}">${d.name || 'Unknown'}</span>
-      <span style="font-size:10px;color:var(--text3);flex-shrink:0">${d.downloadedAt ? new Date(d.downloadedAt).toLocaleDateString() : ''}</span>
+      <span class="dli-time">${d.downloadedAt ? new Date(d.downloadedAt).toLocaleString() : ''}</span>
       <div class="dli-actions">
         <button class="dli-btn cp-url" data-url="${d.url}" title="Copy URL"><i class="fas fa-link"></i></button>
         <button class="dli-btn rm" data-id="${d.id}" title="Remove"><i class="fas fa-times"></i></button>
