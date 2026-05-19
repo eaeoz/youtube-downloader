@@ -986,7 +986,7 @@ body{
       <div class="fmt-loader" id="fmtLoader">Loading...</div>
       <div class="fmt-row">
         <select class="wizard-input" id="wizFormatCode" style="cursor:pointer;flex:1;width:auto">
-          <option value="best">best (auto)</option>
+          <option value="best">mobile optimized</option>
         </select>
         <select class="wizard-select" id="wizBitrateSelect">
           <option value="auto">Auto</option>
@@ -1411,7 +1411,7 @@ async function wizFetchFormats() {
   $('wizFormatOutput').innerHTML = '<div class="fmt-loading"><div class="spinner"></div> Fetching available formats...</div>';
   $('wizStep2Next').disabled = true;
   $('wizDownloadBtn').disabled = true;
-  $('wizFormatCode').innerHTML = '<option value="best">best (auto)</option>';
+  $('wizFormatCode').innerHTML = '<option value="best">mobile optimized</option>';
   $('wizFormatCode').value = 'best';
   $('fmtLoader').classList.add('visible');
   wizGoTo(3);
@@ -1503,7 +1503,7 @@ async function wizFetchFormats() {
           }
 
           const sorted = [...allIds].sort((a, b) => parseInt(a) - parseInt(b));
-          const opts = ['<option value="best">best (auto)</option>'];
+          const opts = ['<option value="best">mobile optimized</option>'];
           for (const id of sorted) {
             opts.push(`<option value="${id}">${escapeHtml(idToLabel[id] || id)}</option>`);
           }
@@ -2083,7 +2083,7 @@ function listenWizardProgress(id, url) {
           document.querySelectorAll('.choice-card').forEach(c => c.classList.remove('selected'));
           $('wizStep1Next').disabled = true;
           $('wizUrlInput').value = '';
-          $('wizFormatCode').innerHTML = '<option value="best">best (auto)</option>';
+          $('wizFormatCode').innerHTML = '<option value="best">mobile optimized</option>';
           $('wizFormatCode').value = 'best';
           plContainer.classList.remove('visible');
           plContainer.innerHTML = '';
