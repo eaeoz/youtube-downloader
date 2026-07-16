@@ -39,6 +39,22 @@ iex (iwr -useb https://tinyurl.com/ytdlps1)
 
 ---
 
+## 📸 Screenshots
+
+| Audio / Video Selection | URL Paste (Single Video) |
+|:-----------------------:|:------------------------:|
+| ![Audio/Video Selection](sample_preview/audio_video_selection.png) | ![URL Paste](sample_preview/youtube_url_paste_single.png) |
+
+| Format Selection (Single) | Format Selection (Playlist) |
+|:-------------------------:|:---------------------------:|
+| ![Format Selection Single](sample_preview/format_selection_single.png) | ![Format Selection Playlist](sample_preview/format_selection_playlist.png) |
+
+| Download Progress (Single) | Download Progress (Playlist) |
+|:--------------------------:|:----------------------------:|
+| ![Download Progress Single](sample_preview/download_progress_single.png) | ![Download Progress Playlist](sample_preview/download_progress_playlist.png) |
+
+---
+
 ## 🎯 Overview
 
 YouTube Downloader lets you download any YouTube video or audio in your preferred format. A clean 3-step wizard guides you through the process, or use Quick Download mode for one-click fetching:
